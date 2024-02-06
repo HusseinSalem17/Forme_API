@@ -100,11 +100,12 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(TrainerProfile)
 class TrainerProfileAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "get_username",
         "get_email",
         "get_phone",
         "get_group",
-        "specialization",
+        "get_specialization",
     ]
     search_fields = [
         "user__username",
@@ -118,15 +119,24 @@ class TrainerProfileAdmin(admin.ModelAdmin):
         return obj.user.email
 
     def get_phone(self, obj):
-        return obj.user.phone_number
+        if obj.user.phone_number:
+            return obj.user.phone_number
+        else:
+            return "N/A"
 
     def get_group(self, obj):
         return ", ".join(group.name for group in obj.user.groups.all())
 
+    def get_specialization(self, obj):
+        if obj.specialization:
+            return obj.specialization
+        else:
+            return "N/A"
+
     # save_model() is a overriden method from ModelAdmin class
     def save_model(self, request, obj, form, change):
         # Check if the "trainer" group exists
-        trainer_group, created = Group.objects.get_or_create(name="trainer")
+        trainer_group, created = Group.objects.get_or_create(name="trainers")
 
         # Add the user to the "trainer" group
         if not obj.user.groups.filter(name="trainer").exists():
@@ -144,11 +154,12 @@ class TrainerProfileAdmin(admin.ModelAdmin):
 @admin.register(TraineeProfile)
 class TraineeProfileAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "get_username",
         "get_email",
-        "fitness_goals",
+        "get_fitness_goals",
         "get_group",
-        "current_fitness_level",
+        "get_current_fitness_level",
     ]
     search_fields = [
         "user__username",
@@ -156,16 +167,92 @@ class TraineeProfileAdmin(admin.ModelAdmin):
     ]
 
     def get_username(self, obj):
-        obj.user.username
+        return obj.user.username
 
     def get_email(self, obj):
         return obj.user.email
 
     def get_phone(self, obj):
-        return obj.user.phone_number
+        if obj.user.phone_number:
+            return obj.user.phone_number
+        else:
+            return "N/A"
+
+    def get_fitness_goals(self, obj):
+        if obj.fitness_goals:
+            return obj.fitness_goals
+        else:
+            return "N/A"
 
     def get_group(self, obj):
         return ", ".join(group.name for group in obj.user.groups.all())
+
+    def get_current_fitness_level(self, obj):
+        if obj.current_fitness_level:
+            return obj.current_fitness_level
+        else:
+            return "N/A"
+
+    # save_model() is a overriden method from ModelAdmin class
+    def save_model(self, request, obj, form, change):
+        # Check if the "trainer" group exists
+        trainer_group, created = Group.objects.get_or_create(name="trainees")
+
+        # Add the user to the "trainer" group
+        if not obj.user.groups.filter(name="trainees").exists():
+            obj.user.groups.add(trainer_group)
+
+        # Save the TrainerProfile instance
+        super().save_model(request, obj, form, change)
+
+    get_username.short_description = "Username"
+    get_email.short_description = "Email"
+    get_phone.short_description = "Phone"
+    get_group.short_description = "Group"
+
+
+@admin.register(Owner)
+class OwnerAdmin(admin.ModelAdmin):
+    list_display = [
+        "get_username",
+        "get_email",
+        "get_phone",
+        "get_group",
+    ]
+    search_fields = [
+        "user__username",
+        "user__email",
+    ]
+
+    def get_username(self, obj):
+        return obj.user.username
+
+    def get_email(self, obj):
+        return obj.user.email
+
+    def get_phone(self, obj):
+        if obj.user.phone_number:
+            return obj.user.phone_number
+        else:
+            return "N/A"
+
+    def get_group(self, obj):
+        if obj.user.groups.exists():
+            return ", ".join(group.name for group in obj.user.groups.all())
+        else:
+            return "N/A"
+
+    # save_model() is a overriden method from ModelAdmin class
+    def save_model(self, request, obj, form, change):
+        # Check if the "trainer" group exists
+        trainer_group, created = Group.objects.get_or_create(name="owners")
+
+        # Add the user to the "trainer" group
+        if not obj.user.groups.filter(name="owners").exists():
+            obj.user.groups.add(trainer_group)
+
+        # Save the TrainerProfile instance
+        super().save_model(request, obj, form, change)
 
     get_username.short_description = "Username"
     get_email.short_description = "Email"

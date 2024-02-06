@@ -38,7 +38,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "rest_framework",
     "account",
+    "trainings",
 ]
 
 MIDDLEWARE = [
@@ -101,6 +103,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+        # "backend.authentication.TokenAuthentication",
+    ]
+}
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
@@ -127,3 +137,18 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+TEMPLATES_BASE_URL = "http://127.0.0.1:8000"
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+Email_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "salemhussein49@gmail.com"
+EMAIL_HOST_PASSWORD = "qtcd vzge nqex joph"
+
+
+CORS_ALLOWED_ORIGINS = [
+    "http://10.0.2.2:8000",
+    "http://127.0.0.1:8000",
+]
