@@ -4,9 +4,10 @@ from django.utils.text import slugify
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
 
 
-# Create your models here.
 class CustomUserManager(BaseUserManager):
     def create_user(
         self, username, email, password=None, group_name=None, **extra_fields
@@ -123,6 +124,7 @@ class TraineeProfile(models.Model):
         on_delete=models.CASCADE,
         limit_choices_to={"groups__name": None},
         related_name="trainee_profile",
+        primary_key=True,
     )
     fitness_goals = models.TextField(blank=True)
     current_fitness_level = models.CharField(max_length=255, blank=True)
@@ -143,24 +145,20 @@ class TraineeProfile(models.Model):
 
 
 class Rating(models.Model):
-    RATING_CHOICES = [
-        (1, "1 Star"),
-        (2, "2 Stars"),
-        (3, "3 Stars"),
-        (4, "4 Stars"),
-        (5, "5 Stars"),
-    ]
-
-    rating = models.IntegerField(choices=RATING_CHOICES)
+    rating = models.FloatField(
+        validators=[MinValueValidator(1.0), MaxValueValidator(5.0)]
+    )
     comment = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Link the Rating to the Trainee providing the rating
     trainee = models.ForeignKey(
         TraineeProfile,
         on_delete=models.CASCADE,
         related_name="trainee_ratings",
     )
 
-    # Add a GenericForeignKey to link the Rating to either Trainer, Workout, or Program
+    # Add a GenericForeignKey to link the Rating to the Trainer being rated
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
@@ -171,9 +169,45 @@ class Rating(models.Model):
     content_object = GenericForeignKey("content_type", "object_id")
 
     def __str__(self):
-        return (
-            f"{self.trainee.username}'s Rating on {self.content_type} {self.object_id}"
-        )
+        return f"{self.trainee.user.username}'s Rating on {self.content_type} {self.object_id}"
+
+    def save(self, *args, **kwargs):
+        # Check if a rating already exists for the same trainee and trainer combination
+        existing_rating = Rating.objects.filter(
+            trainee=self.trainee,
+            content_type=self.content_type,
+            object_id=self.object_id,
+        ).first()
+
+        if existing_rating:
+            # Update the existing rating if needed or raise an error
+            existing_rating.rating = self.rating
+            existing_rating.comment = self.comment
+            existing_rating.save()
+        else:
+            # No existing rating, proceed with the save
+            super().save(*args, **kwargs)
+
+    def clean(self):
+        # Ensure that a trainee can only make one rating for the same trainer
+        existing_ratings = Rating.objects.filter(
+            trainee=self.trainee,
+            content_type=self.content_type,
+            object_id=self.object_id,
+        ).exclude(id=self.id)
+
+        if existing_ratings.exists():
+            raise ValidationError(
+                "A trainee can only make one rating for the same trainer."
+            )
+
+        # Check if the object_id exists in the related class
+        if self.content_type is not None and self.object_id is not None:
+            try:
+                related_class = self.content_type.model_class()
+                related_object = related_class.objects.get(pk=self.object_id)
+            except related_class.DoesNotExist:
+                raise ValidationError("The specified object does not exist.")
 
 
 class TrainerProfile(models.Model):
@@ -193,6 +227,7 @@ class TrainerProfile(models.Model):
         on_delete=models.CASCADE,
         limit_choices_to={"groups__name": None},
         related_name="trainer_profile",
+        primary_key=True,
     )
     slug = models.SlugField(unique=True, blank=True, null=True)
     SPORTS_CHOICES = [
@@ -297,11 +332,12 @@ class TrainerProfile(models.Model):
 
 
 class Owner(models.Model):
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
         limit_choices_to={"groups__name": None},
         related_name="club_owner",
+        primary_key=True,
     )
 
     def __str__(self):

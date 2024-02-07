@@ -2,7 +2,7 @@ from django.db import models
 
 from django.contrib.contenttypes.fields import GenericRelation
 
-from account.models import TraineeProfile, TrainerProfile, Rating
+from account.models import TraineeProfile, TrainerProfile
 
 
 class Program(models.Model):
@@ -32,7 +32,7 @@ class Program(models.Model):
     )
     cupon = models.CharField(max_length=255, blank=True)
     # Add GenericRelation to link Program to Rating
-    ratings = GenericRelation(Rating, related_query_name="trainee_ratings")
+    # ratings = GenericRelation(Rating, related_query_name="trainee_ratings")
     max_trainees = models.PositiveIntegerField()
     current_trainees = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -75,7 +75,7 @@ class Workout(models.Model):
     )
     cupon = models.CharField(max_length=255, blank=True)
     # Add GenericRelation to link Workout to Rating
-    ratings = GenericRelation(Rating, related_query_name="trainee_ratings")
+    # ratings = GenericRelation(Rating, related_query_name="trainee_ratings")
     duration_in_minutes = models.PositiveIntegerField()
     videos_count = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)

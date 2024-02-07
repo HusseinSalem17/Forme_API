@@ -1,28 +1,28 @@
 from django.contrib import admin
 
-from .models import Program, Rating, Workout
+from .models import Program, Workout
 
 
 # Register your models here.
-@admin.register(Rating)
-class RatingAdmin(admin.ModelAdmin):
-    list_display = [
-        "rating",
-        "comment",
-        "created_at",
-        "trainee",
-        "content_object",
-    ]
-    search_fields = [
-        "trainee__user__username",
-        "content_type__model",
-    ]
-    list_filter = [
-        "content_type__model",
-        "trainee__user__username",
-        "rating",
-        "created_at",
-    ]
+# @admin.register(Rating)
+# class RatingAdmin(admin.ModelAdmin):
+#     list_display = [
+#         "rating",
+#         "comment",
+#         "created_at",
+#         "trainee",
+#         "content_object",
+#     ]
+#     search_fields = [
+#         "trainee__user__username",
+#         "content_type__model",
+#     ]
+#     list_filter = [
+#         "content_type__model",
+#         "trainee__user__username",
+#         "rating",
+#         "created_at",
+#     ]
 
 
 @admin.register(Workout)

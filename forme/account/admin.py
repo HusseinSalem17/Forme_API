@@ -1,12 +1,14 @@
+from django import forms
 from django.contrib import admin
 from .models import *
 from django.contrib.auth.admin import UserAdmin
-
+from django.db.models import Avg
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
     list_display = (
+        "id",
         "username",
         "email",
         "get_phone_number",
@@ -100,17 +102,21 @@ class CustomUserAdmin(UserAdmin):
 @admin.register(TrainerProfile)
 class TrainerProfileAdmin(admin.ModelAdmin):
     list_display = [
-        "id",
+        "get_id",
         "get_username",
         "get_email",
         "get_phone",
         "get_group",
         "get_specialization",
+        "get_ratings",
     ]
     search_fields = [
         "user__username",
         "user__email",
     ]
+
+    def get_id(self, obj):
+        return obj.user.id
 
     def get_username(self, obj):
         return obj.user.username
@@ -133,6 +139,9 @@ class TrainerProfileAdmin(admin.ModelAdmin):
         else:
             return "N/A"
 
+    def get_ratings(self, obj):
+        average_rating = obj.ratings.aggregate(Avg("rating"))["rating__avg"]
+        return round(average_rating, 2) if average_rating is not None else 0
     # save_model() is a overriden method from ModelAdmin class
     def save_model(self, request, obj, form, change):
         # Check if the "trainer" group exists
@@ -145,26 +154,40 @@ class TrainerProfileAdmin(admin.ModelAdmin):
         # Save the TrainerProfile instance
         super().save_model(request, obj, form, change)
 
+    def get_form(self, request, obj=None, **kwargs):
+        # Customize the form based on whether it's for adding or editing
+        if obj is None:
+            # Adding a new TrainerProfile
+            self.exclude = []
+        else:
+            # Editing an existing TrainerProfile
+            self.exclude = ["user"]
+        return super().get_form(request, obj, **kwargs)
+
+    get_id.short_description = "ID"
     get_username.short_description = "Username"
     get_email.short_description = "Email"
     get_phone.short_description = "Phone"
     get_group.short_description = "Group"
-
+    get_ratings.short_description = "Avg Ratings"
 
 @admin.register(TraineeProfile)
 class TraineeProfileAdmin(admin.ModelAdmin):
     list_display = [
-        "id",
+        "get_id",
         "get_username",
         "get_email",
-        "get_fitness_goals",
+        "fitness_goals",
         "get_group",
-        "get_current_fitness_level",
+        "current_fitness_level",
     ]
     search_fields = [
         "user__username",
         "user__email",
     ]
+
+    def get_id(self, obj):
+        return obj.user.id
 
     def get_username(self, obj):
         return obj.user.username
@@ -178,42 +201,44 @@ class TraineeProfileAdmin(admin.ModelAdmin):
         else:
             return "N/A"
 
-    def get_fitness_goals(self, obj):
-        if obj.fitness_goals:
-            return obj.fitness_goals
-        else:
-            return "N/A"
-
     def get_group(self, obj):
-        return ", ".join(group.name for group in obj.user.groups.all())
-
-    def get_current_fitness_level(self, obj):
-        if obj.current_fitness_level:
-            return obj.current_fitness_level
+        if obj.user.groups.exists():
+            return ", ".join(group.name for group in obj.user.groups.all())
         else:
             return "N/A"
-
-    # save_model() is a overriden method from ModelAdmin class
+    
     def save_model(self, request, obj, form, change):
-        # Check if the "trainer" group exists
-        trainer_group, created = Group.objects.get_or_create(name="trainees")
+        # Check if the "trainee" group exists
+        trainee_group, created = Group.objects.get_or_create(name="trainees")
 
-        # Add the user to the "trainer" group
+        # Add the user to the "trainee" group
         if not obj.user.groups.filter(name="trainees").exists():
-            obj.user.groups.add(trainer_group)
+            obj.user.groups.add(trainee_group)
 
-        # Save the TrainerProfile instance
+        # Save the TraineeProfile instance
         super().save_model(request, obj, form, change)
 
+    get_id.short_description = "ID"
     get_username.short_description = "Username"
     get_email.short_description = "Email"
     get_phone.short_description = "Phone"
     get_group.short_description = "Group"
 
+    def get_form(self, request, obj=None, **kwargs):
+        # Customize the form based on whether it's for adding or editing
+        if obj is None:
+            # Adding a new TraineeProfile
+            self.exclude = []
+        else:
+            # Editing an existing TraineeProfile
+            self.exclude = ["user"]
+        return super().get_form(request, obj, **kwargs)
+
 
 @admin.register(Owner)
 class OwnerAdmin(admin.ModelAdmin):
     list_display = [
+        "get_id",
         "get_username",
         "get_email",
         "get_phone",
@@ -223,6 +248,9 @@ class OwnerAdmin(admin.ModelAdmin):
         "user__username",
         "user__email",
     ]
+
+    def get_id(self, obj):
+        return obj.user.id
 
     def get_username(self, obj):
         return obj.user.username
@@ -254,7 +282,39 @@ class OwnerAdmin(admin.ModelAdmin):
         # Save the TrainerProfile instance
         super().save_model(request, obj, form, change)
 
+    def get_form(self, request, obj=None, **kwargs):
+        # Customize the form based on whether it's for adding or editing
+        if obj is None:
+            # Adding a new TrainerProfile
+            self.exclude = []
+        else:
+            # Editing an existing TrainerProfile
+            self.exclude = ["user"]
+        return super().get_form(request, obj, **kwargs)
+
+    get_id.short_description = "ID"
     get_username.short_description = "Username"
     get_email.short_description = "Email"
     get_phone.short_description = "Phone"
     get_group.short_description = "Group"
+
+
+@admin.register(Rating)
+class RatingAdmin(admin.ModelAdmin):
+    list_display = [
+        "rating",
+        "comment",
+        "created_at",
+        "trainee",
+        "content_object",
+    ]
+    search_fields = [
+        "trainee__user__username",
+        "content_type__model",
+    ]
+    list_filter = [
+        "content_type__model",
+        "trainee__user__username",
+        "rating",
+        "created_at",
+    ]
