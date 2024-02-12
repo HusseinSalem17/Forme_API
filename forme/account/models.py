@@ -1,11 +1,13 @@
-from django.db import models
-from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
-from django.utils.text import slugify
+import uuid
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
+from django.db import models
+from django.contrib.auth.models import AbstractUser, BaseUserManager, Group
+from django.contrib.postgres.fields import ArrayField
+from django.utils.text import slugify
 
 
 class CustomUserManager(BaseUserManager):
@@ -26,20 +28,20 @@ class CustomUserManager(BaseUserManager):
 
         return user
 
-    def create_trainer(self, username, email, password=None, **extra_fields):
+    def create_trainer(self, email, password=None, **extra_fields):
         return self.create_user(
-            username,
-            email,
-            password,
+            username="",  # Trainers don't have usernames
+            email=email,
+            password=password,
             group_name="trainers",
             **extra_fields,
         )
 
-    def create_trainee(self, username, email, password=None, **extra_fields):
+    def create_trainee(self, email, password=None, **extra_fields):
         return self.create_user(
-            username,
-            email,
-            password,
+            username="",  # Trainees don't have usernames
+            email=email,
+            password=password,
             group_name="trainees",
             **extra_fields,
         )
@@ -77,6 +79,10 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractUser):
+    GENDER_CHOICES = [
+        ("male", "Male"),
+        ("female", "Female"),
+    ]
     username = models.CharField(max_length=100, null=False)
     email = models.EmailField(max_length=255, unique=True)
     date_of_birth = models.DateField(blank=True, null=True)
@@ -85,16 +91,19 @@ class CustomUser(AbstractUser):
         null=True,
         blank=True,
     )
-    location = models.CharField(max_length=255)
+    gender = models.CharField(
+        max_length=6,
+        choices=GENDER_CHOICES,
+        default="Male",
+    )
+    location = models.CharField(max_length=255, null=True, blank=True)
     phone_number = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     objects = CustomUserManager()
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = [
-        "username",
-    ]
+    REQUIRED_FIELDS = []
 
     def is_trainer(self):
         return self.groups.filter(name="trainers").exists()
@@ -115,10 +124,6 @@ class CustomUser(AbstractUser):
 
 
 class TraineeProfile(models.Model):
-    GENDER_CHOICES = [
-        ("male", "Male"),
-        ("female", "Female"),
-    ]
     user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
@@ -126,6 +131,8 @@ class TraineeProfile(models.Model):
         related_name="trainee_profile",
         primary_key=True,
     )
+    weight = models.FloatField(blank=True, null=True)
+    height = models.FloatField(blank=True, null=True)
     fitness_goals = models.TextField(blank=True)
     current_fitness_level = models.CharField(max_length=255, blank=True)
     trainers = models.ManyToManyField(
@@ -133,11 +140,6 @@ class TraineeProfile(models.Model):
         related_name="trainees",
         limit_choices_to={"groups__name": "trainers"},
         blank=True,
-    )
-    gender = models.CharField(
-        max_length=6,
-        choices=GENDER_CHOICES,
-        default="Male",
     )
 
     def __str__(self):
@@ -211,17 +213,6 @@ class Rating(models.Model):
 
 
 class TrainerProfile(models.Model):
-    GENDER_CHOICES = [
-        ("male", "Male"),
-        ("female", "Female"),
-    ]
-    EXPERIENCE_CHOICES = [
-        ("0-1", "0-1 years"),
-        ("1-3", "1-3 years"),
-        ("3-5", "3-5 years"),
-        ("5-10", "5-10 years"),
-        ("10+", "10+ years"),
-    ]
     user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
@@ -229,73 +220,13 @@ class TrainerProfile(models.Model):
         related_name="trainer_profile",
         primary_key=True,
     )
-    slug = models.SlugField(unique=True, blank=True, null=True)
-    SPORTS_CHOICES = [
-        ("aerobics", "Aerobics"),
-        ("archery", "Archery"),
-        ("badminton", "Badminton"),
-        ("baseball", "Baseball"),
-        ("basketball", "Basketball"),
-        ("barre", "Barre"),
-        ("boxing", "Boxing"),
-        ("bowling", "Bowling"),
-        ("bodybuilding", "Bodybuilding"),
-        ("cheerleading", "Cheerleading"),
-        ("climbing", "Climbing"),
-        ("cricket", "Cricket"),
-        ("crossfit", "Crossfit"),
-        ("cycling", "Cycling"),
-        ("dance", "Dance"),
-        ("dodgeball", "Dodgeball"),
-        ("equestrian", "Equestrian"),
-        ("fencing", "Fencing"),
-        ("football", "Football"),
-        ("golf", "Golf"),
-        ("gymnastics", "Gymnastics"),
-        ("handball", "Handball"),
-        ("hockey", "Hockey"),
-        ("ice_skating", "Ice Skating"),
-        ("judo", "Judo"),
-        ("jui_jitsu", "Jui Jitsu"),
-        ("karate", "Karate"),
-        ("krav_maga", "Krav Maga"),
-        ("lacrosse", "Lacrosse"),
-        ("martial_arts", "Martial Arts"),
-        ("mma", "MMA"),
-        ("muay_thai", "Muay Thai"),
-        ("other", "Other"),
-        ("pilates", "Pilates"),
-        ("powerlifting", "Powerlifting"),
-        ("rowing", "Rowing"),
-        ("rugby", "Rugby"),
-        ("sailing", "Sailing"),
-        ("skateboarding", "Skateboarding"),
-        ("skiing", "Skiing"),
-        ("snowboarding", "Snowboarding"),
-        ("soccer", "Soccer"),
-        ("softball", "Softball"),
-        ("spinning", "Spinning"),
-        ("strongman", "Strongman"),
-        ("swimming", "Swimming"),
-        ("table_tennis", "Table Tennis"),
-        ("taekwondo", "Taekwondo"),
-        ("tennis", "Tennis"),
-        ("track_and_field", "Track and Field"),
-        ("ultimate_frisbee", "Ultimate Frisbee"),
-        ("volleyball", "Volleyball"),
-        ("water_polo", "Water Polo"),
-        ("weight_lifting", "Weight Lifting"),
-        ("wrestling", "Wrestling"),
-        ("yoga", "Yoga"),
-        ("zumba", "Zumba"),
-    ]
+    slug = models.SlugField(unique=True, blank=True, null=True, editable=False)
     bio = models.TextField(blank=True)
-    specialization = models.CharField(
+    sport_field = models.CharField(
         max_length=255,
-        choices=SPORTS_CHOICES,
         blank=True,
     )
-    certification_files = models.FileField(upload_to="certifications/", blank=True)
+    document_files = models.FileField(upload_to="certifications/", blank=True)
     id_card = models.FileField(upload_to="id_cards/", blank=True)
     background_image = models.ImageField(upload_to="background_images/", blank=True)
     trainees = models.ManyToManyField(
@@ -304,17 +235,21 @@ class TrainerProfile(models.Model):
         limit_choices_to={"groups__name": "trainees"},
         blank=True,
     )
-    gender = models.CharField(
-        max_length=6,
-        choices=GENDER_CHOICES,
-        default="Male",
-    )
+    exp_injuries = models.BooleanField(default=False)
+    physical_disabilities = models.BooleanField(default=False)
     experience = models.CharField(
         max_length=5,
-        choices=EXPERIENCE_CHOICES,
         blank=True,
         null=True,
     )
+    languages = ArrayField(
+        models.CharField(max_length=255),
+        blank=True,
+        default=list,
+    )
+    facebook_url = models.URLField(blank=True, null=True)
+    instagram_url = models.URLField(blank=True, null=True)
+    youtube_url = models.URLField(blank=True, null=True)
     verified = models.BooleanField(default=False)
     number_of_trainees = models.PositiveIntegerField(default=0)
     # Add GenericRelation to link TrainerProfile to Rating
@@ -323,7 +258,8 @@ class TrainerProfile(models.Model):
     def save(self, *args, **kwargs):
         # Generate a unique slug based on the trainer's username
         if not self.slug:
-            self.slug = slugify(self.user.username)
+            slug_str = "%s %s" % (self.user.username, self.user.id)
+            self.slug = slugify(self, slug_str)
 
         super(TrainerProfile, self).save(*args, **kwargs)
 
@@ -344,37 +280,39 @@ class Owner(models.Model):
         return f"{self.user.username}'s Club Owner"
 
 
-# class Token(models.Model):
-#     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-#     token = models.CharField(max_length=255)
-#     created_at = models.DateTimeField(auto_now_add=True)
+class OTP(models.Model):
+    email = models.EmailField(max_length=255, unique=True)
+    otp = models.IntegerField()
+    validity = models.DateTimeField()
+    verified = models.BooleanField(default=False)
 
-#     def __str__(self):
-#         return f"{self.user.username}'s Token"
-
-
-# class Otp(models.Model):
-#     user = models.ForeignKey(
-#         CustomUser,
-#         on_delete=models.CASCADE,
-#         related_name="tokens_set",
-#     )
-#     otp = models.IntegerField()
-#     validity = models.DateTimeField()
-#     verified = models.BooleanField(default=False)
-
-#     def __str__(self):
-#         return self.email
+    def __str__(self):
+        return self.email
 
 
-# class PasswordResetToken(models.Model):
-#     user = models.ForeignKey(
-#         CustomUser,
-#         on_delete=models.CASCADE,
-#         related_name="password_reset_tokens",
-#     )
-#     token = models.CharField(max_length=5000)
-#     created_at = models.DateTimeField()
+class Token(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="tokens",
+    )
+    token = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
 
-#     def __str__(self):
-#         return self.user.email
+    def __str__(self):
+        return f"{self.user.username}'s Token"
+
+
+class ResetPasswordToken(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+    token = models.CharField(max_length=5000)
+    created_at = models.DateTimeField()
+
+    def __str__(self):
+        return self.user.email
+
+

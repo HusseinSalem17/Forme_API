@@ -1,95 +1,95 @@
-# from random import randint
-# import datetime
+from rest_framework.permissions import BasePermission
+from rest_framework import status
+from django.template.loader import get_template
+from django.core.mail import EmailMessage
+from rest_framework.response import Response
 
-# from forme.forme import settings
-# from rest_framework.response import Response
-# import uuid
+from random import randint
+import datetime
+import uuid
 
-# from forme.settings import TEMPLATES_BASE_URL
-# from django.core.mail import EmailMessage
-# from django.template.loader import get_template
-
-# from django.core.mail import send_mail
-# from account.models import Otp, PasswordResetToken, Token
-# from rest_framework.permissions import BasePermission
+from forme import settings
+from .models import  Token,OTP
 
 
-# def send_otp(email):
-#     """
-#     Send OTP to the user's email
-#     """
-#     otp = randint(100000, 999999)
-#     subject = "Your OTP for Forme"
-#     message = f"Your OTP for Forme is {otp}"
-#     validity = datetime.datetime.now() + datetime.timedelta(minutes=10)
-#     Otp.objects.update_or_create(
-#         email=email,
-#         defaults={
-#             "otp": otp,
-#             "validity": validity,
-#             "verified": False,
-#         },
-#     )
-#     from_email = settings.EMAIL_HOST_USER
-#     to_email = email
-#     send_mail(subject, message, from_email, [to_email])
-#     print("otp is {otp}")
-#     return Response("OTP sent successfully!")
+def send_otp(email):
+    """
+    Send OTP to the user's email
+    """
+    otp = randint(1000, 9999)
+    subject = "Your OTP for Forme"
+    validity = datetime.datetime.now() + datetime.timedelta(minutes=10)
+
+    # Generate the URL for the logo in the media folder
+    logo_url = settings.MEDIA_URL + "logo.png"
+    # Create context for email template
+    context = {
+        "otp": otp,
+        "validity": validity,
+        "verified": False,
+        "logo_url": logo_url,  # Replace with the actual URL of your logo
+    }
+
+    # Render email template
+    message = get_template("emails/email-template.html").render(context)
+
+    OTP.objects.update_or_create(
+        email=email,
+        defaults={
+            "otp": otp,
+            "validity": validity,
+            "verified": False,
+        },
+    )
+    to_email = email
+    msg = EmailMessage(
+        subject,
+        body=message,
+        to=[to_email],
+    )
+    msg.content_subtype = "html"
+    try:
+        msg.send()
+    except Exception as e:
+        print(e)
+        return Response("unable to send otp", status=400)
+    print("otp is ", otp)
+    return Response("OTP sent successfully!", status=200)
 
 
-# def new_token():
-#     """
-#     Generate a new token for the user
-#     """
-#     return uuid.uuid4().hex
+def new_token():
+    """
+    Generate a new token for the user
+    """
+    return uuid.uuid4().hex
 
 
-# def token_response(user):
-#     """
-#     Return a token response
-#     """
-#     token = new_token()
-#     Token.objects.create(user=user, token=token)
-#     return Response({"token": token})
+def token_response(user):
+    """
+    Return a token response
+    """
+    try:
+        token = new_token()
+        existing_token = Token.objects.filter(user=user).first()
+
+        if existing_token:
+            # If the user has a token, update its value
+            existing_token.token = token
+            existing_token.save()
+        else:
+            # If the user doesn't have a token, create a new one
+            Token.objects.create(user=user, token=token)
+
+        return Response({"token": token}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
-# def send_password_reset_email(user):
-#     token = new_token()
-#     exp_time = datetime.datetime.now() + datetime.timedelta(minutes=10)
-#     PasswordResetToken.objects.update_or_create(
-#         user=user,
-#         defaults={
-#             "user": user,
-#             "token": token,
-#             "created_at": exp_time,
-#         },
-#     )
-#     email_data = {
-#         "token": token,
-#         "email": user.email,
-#         "base_url": TEMPLATES_BASE_URL,
-#     }
 
-#     message = get_template("emails/reset-password.html").render(email_data)
+class IsAuthenticatedUser(BasePermission):
+    message = "unauthenticated_user"
 
-#     msg = EmailMessage(
-#         "Reset Password",
-#         body=message,
-#         to=[user.email],
-#     )
-
-#     msg.content_subtype = "html"
-
-#     try:
-#         msg.send()
-#     except Exception as e:
-#         print(e)
-#         return Response("unable to send password reset email", status=400)
-#     return Response("reset_password_email_sent")
-
-
-# class IsAuthenticatedUser(BasePermission):
-#     message = "unauthenticated_user"
-
-#     def has_permission(self, request, view):
-#         return bool(request.user)
+    def has_permission(self, request, view):
+        return bool(request.user)

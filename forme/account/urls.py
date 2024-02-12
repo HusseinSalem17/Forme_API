@@ -1,9 +1,56 @@
 # urls.py
 
 from django.urls import path
-from .views import TraineeProfileDetail, TraineeProfileList, TrainerProfileDetail, TrainerProfileList
+from .views import (
+    TraineeProfileDetail,
+    TraineeProfileList,
+    TrainerProfileDetail,
+    TrainerProfileList,
+    complete_profile,
+    create_account,
+    login,
+    request_otp,
+    resend_otp,
+    update_preference,
+    verify_otp,
+)
 
 urlpatterns = [
+    path(
+        "request_otp/",
+        request_otp,
+        name="request_otp",
+    ),
+    path(
+        "resend_otp/",
+        resend_otp,
+        name="resend_otp",
+    ),
+    path(
+        "verify_otp/",
+        verify_otp,
+        name="verify_otp",
+    ),
+    path(
+        "create_account/",
+        create_account,
+        name="create_account",
+    ),
+    path(
+        "complete_profile/",
+        complete_profile,
+        name="complete_profile",
+    ),
+    path(
+        "update_preference/",
+        update_preference,
+        name="update_preference",
+    ),
+    path(
+        "login/",
+        login,
+        name="login",
+    ),
     path(
         "trainee_profiles/",
         TraineeProfileList,

@@ -4,6 +4,25 @@ from .models import *
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Avg
 
+
+@admin.register(OTP)
+class OTPAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "email",
+        "otp",
+        "validity",
+        "verified",
+    ]
+    search_fields = [
+        "email",
+    ]
+    list_filter = [
+        "verified",
+        "validity",
+    ]
+
+
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
     model = CustomUser
@@ -103,16 +122,21 @@ class CustomUserAdmin(UserAdmin):
 class TrainerProfileAdmin(admin.ModelAdmin):
     list_display = [
         "get_id",
+        "slug",
         "get_username",
         "get_email",
         "get_phone",
         "get_group",
-        "get_specialization",
+        "get_sport_field",
         "get_ratings",
     ]
     search_fields = [
         "user__username",
         "user__email",
+    ]
+    readonly_fields = [
+        "slug",
+        "user",
     ]
 
     def get_id(self, obj):
@@ -133,15 +157,16 @@ class TrainerProfileAdmin(admin.ModelAdmin):
     def get_group(self, obj):
         return ", ".join(group.name for group in obj.user.groups.all())
 
-    def get_specialization(self, obj):
-        if obj.specialization:
-            return obj.specialization
+    def get_sport_field(self, obj):
+        if obj.sport_field:
+            return obj.sport_field
         else:
             return "N/A"
 
     def get_ratings(self, obj):
         average_rating = obj.ratings.aggregate(Avg("rating"))["rating__avg"]
         return round(average_rating, 2) if average_rating is not None else 0
+
     # save_model() is a overriden method from ModelAdmin class
     def save_model(self, request, obj, form, change):
         # Check if the "trainer" group exists
@@ -154,22 +179,13 @@ class TrainerProfileAdmin(admin.ModelAdmin):
         # Save the TrainerProfile instance
         super().save_model(request, obj, form, change)
 
-    def get_form(self, request, obj=None, **kwargs):
-        # Customize the form based on whether it's for adding or editing
-        if obj is None:
-            # Adding a new TrainerProfile
-            self.exclude = []
-        else:
-            # Editing an existing TrainerProfile
-            self.exclude = ["user"]
-        return super().get_form(request, obj, **kwargs)
-
     get_id.short_description = "ID"
     get_username.short_description = "Username"
     get_email.short_description = "Email"
     get_phone.short_description = "Phone"
     get_group.short_description = "Group"
     get_ratings.short_description = "Avg Ratings"
+
 
 @admin.register(TraineeProfile)
 class TraineeProfileAdmin(admin.ModelAdmin):
@@ -185,7 +201,9 @@ class TraineeProfileAdmin(admin.ModelAdmin):
         "user__username",
         "user__email",
     ]
-
+    readonly_fields = [
+        "user",
+    ]
     def get_id(self, obj):
         return obj.user.id
 
@@ -206,7 +224,7 @@ class TraineeProfileAdmin(admin.ModelAdmin):
             return ", ".join(group.name for group in obj.user.groups.all())
         else:
             return "N/A"
-    
+
     def save_model(self, request, obj, form, change):
         # Check if the "trainee" group exists
         trainee_group, created = Group.objects.get_or_create(name="trainees")
@@ -317,4 +335,17 @@ class RatingAdmin(admin.ModelAdmin):
         "trainee__user__username",
         "rating",
         "created_at",
+    ]
+
+
+@admin.register(Token)
+class TokenAdmin(admin.ModelAdmin):
+    list_display = [
+        "user",
+        "token",
+        "created_at",
+    ]
+    search_fields = [
+        "user__username",
+        "user__email",
     ]
