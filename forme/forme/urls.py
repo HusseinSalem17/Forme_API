@@ -8,6 +8,9 @@ from . import settings
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("account/", include("account.urls")),
+    path("auth/", include("authentication.urls")),
+    path("clubs/", include("clubs.urls")),
+    path("trainings/", include("trainings.urls")),
 ]
 
 if settings.DEBUG:

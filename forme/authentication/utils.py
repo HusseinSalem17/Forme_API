@@ -9,7 +9,7 @@ import datetime
 import uuid
 
 from forme import settings
-from .models import  Token,OTP
+from .models import OTP, Token
 
 
 def send_otp(email):
@@ -85,7 +85,6 @@ def token_response(user):
         return Response(
             {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 
 class IsAuthenticatedUser(BasePermission):
