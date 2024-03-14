@@ -151,7 +151,7 @@ class Trainer(models.Model):
         super(Trainer, self).save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.user.username}'s Trainer Profile"
+        return f"{self.user.username} Trainer"
 
 
 class Program(models.Model):

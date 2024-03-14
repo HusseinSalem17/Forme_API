@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -146,3 +147,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://10.0.2.2:8000",
     "http://127.0.0.1:8000",
 ]
+
+
+CELERY_BEAT_SCHEDULE = {
+    "create-daily-attendance": {
+        "task": "clubs.tasks.create_daily_attendance",
+        "schedule": timedelta(days=1),
+    },
+}

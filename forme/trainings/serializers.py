@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from account.serializers import CustomUserSerializer, TraineeProfileSerializer
+from account.serializers import CustomUserSerializer, TraineeSerializer
 
 from .models import (
     Availability,
@@ -16,8 +16,8 @@ from .models import (
 )
 
 
-class reviewsDetailSerializer(serializers.ModelSerializer):
-    trainee = TraineeProfileSerializer(read_only=True)
+class ReviewsDetailSerializer(serializers.ModelSerializer):
+    trainee = TraineeSerializer(read_only=True)
 
     class Meta:
         model = Review
@@ -47,8 +47,8 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer()
     workouts = serializers.SerializerMethodField()
     programs = serializers.SerializerMethodField()
-    trainees = TraineeProfileSerializer(many=True)
-    reviews = reviewsDetailSerializer(many=True)
+    trainees = TraineeSerializer(many=True)
+    reviews = ReviewsDetailSerializer(many=True)
     transformations = serializers.SerializerMethodField()
 
     class Meta:
@@ -92,7 +92,7 @@ class TrainerDetailSerializer(serializers.ModelSerializer):
         return TransformationsSerializer(transformations, many=True).data
 
 
-class TrainerProfileListSerializer(serializers.ModelSerializer):
+class TrainerListSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer()
 
     class Meta:
@@ -161,8 +161,8 @@ class ProgramPlanSerializer(serializers.ModelSerializer):
 
 
 class ProgramDetailSerializer(serializers.ModelSerializer):
-    trainees = TraineeProfileSerializer(many=True)
-    reviews = reviewsDetailSerializer(many=True)
+    trainees = TraineeSerializer(many=True)
+    reviews = ReviewsDetailSerializer(many=True)
     program_plans = serializers.SerializerMethodField()
 
     class Meta:
@@ -232,8 +232,8 @@ class WorkoutFileSerializer(serializers.ModelSerializer):
 
 
 class WorkoutDetailSerializer(serializers.ModelSerializer):
-    trainees = TraineeProfileSerializer(many=True)
-    reviews = reviewsDetailSerializer(many=True)
+    trainees = TraineeSerializer(many=True)
+    reviews = ReviewsDetailSerializer(many=True)
     workout_videos_files = serializers.SerializerMethodField()
 
     class Meta:
@@ -347,7 +347,7 @@ class SessionSerializer(serializers.ModelSerializer):
 
     def get_package(self, obj):
         package = Package.objects.filter(session=obj)
-        print('package', package)
+        print("package", package)
         return PackageSerializer(package, many=True).data
 
     def get_availability(self, obj):

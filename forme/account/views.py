@@ -8,7 +8,7 @@ from rest_framework import status
 
 from trainings.models import Trainer
 from .models import Trainee, CustomUser
-from .serializers import TraineeProfileSerializer
+from .serializers import TraineeSerializer
 
 
 @api_view(["POST"])
@@ -133,7 +133,7 @@ def TraineeProfileList(request):
     trainee_profiles = Trainee.objects.all()
     try:
         if request.method == "GET":
-            serializer = TraineeProfileSerializer(trainee_profiles, many=True)
+            serializer = TraineeSerializer(trainee_profiles, many=True)
             return Response(serializer.data)
         else:
             return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -148,11 +148,11 @@ def TraineeProfileDetail(request, pk):
     trainee_profile = get_object_or_404(Trainee, pk=pk)
 
     if request.method == "GET":
-        serializer = TraineeProfileSerializer(trainee_profile)
+        serializer = TraineeSerializer(trainee_profile)
         return Response(serializer.data)
 
     elif request.method == "PUT":
-        serializer = TraineeProfileSerializer(trainee_profile, data=request.data)
+        serializer = TraineeSerializer(trainee_profile, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

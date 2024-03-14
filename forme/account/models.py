@@ -43,7 +43,7 @@ class CustomUserManager(BaseUserManager):
             username,
             email,
             password,
-            group_name="owners",
+            group_name="branches",
             **extra_fields,
         )
 
@@ -104,7 +104,7 @@ class CustomUser(AbstractUser):
         return self.groups.filter(name="trainees").exists()
 
     def is_owner(self):
-        return self.groups.filter(name="owners").exists()
+        return self.groups.filter(name="branches").exists()
 
     def is_admin(self):
         return self.groups.filter(name="admin").exists()

@@ -39,9 +39,11 @@ class ReviewAdmin(admin.ModelAdmin):
 @admin.register(Trainer)
 class TrainerAdmin(admin.ModelAdmin):
     list_display = [
+        "get_id",
         "user",
-        "sport_field",
+        "slug",
         "bio",
+        "sport_field",
     ]
     search_fields = [
         "user__username",
@@ -51,6 +53,17 @@ class TrainerAdmin(admin.ModelAdmin):
         "user__username",
         "sport_field",
     ]
+    readonly_fields = [
+        "slug",
+        "avg_ratings",
+        "number_of_ratings",
+        "number_of_trainees",
+    ]
+
+    def get_id(self, obj):
+        return obj.user.id
+
+    get_id.short_description = "ID"
 
 
 @admin.register(WorkoutFile)

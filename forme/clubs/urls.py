@@ -1,8 +1,42 @@
+from turtle import update
 from django.urls import path
-from .views import branch_list, club_list
+from .views import (
+    add_branch_gallery,
+    create_branch_subscription,
+    add_existing_trainer,
+    add_new_trainer,
+    branch_detail,
+    branch_list,
+    branch_members,
+    branch_subscriptions,
+    club_list,
+    delete_branch_subscription,
+    delete_existing_trainer,
+    delete_new_trainer,
+    edit_branch,
+    edit_branch_subscription,
+    edit_branch_subscription_plan,
+    get_branch_galleries,
+    get_branch_reviews,
+    get_branch_trainers,
+    edit_existing_trainer,
+    edit_new_trainer,
+    register_branch,
+    reset_branch_subscription_plan,
+)
 
 
 urlpatterns = [
+    path(
+        "register_branch/",
+        register_branch,
+        name="register_branch",
+    ),
+    path(
+        "edit_branch/",
+        edit_branch,
+        name="edit_branch",
+    ),
     path(
         "clubs/",
         club_list,
@@ -12,5 +46,100 @@ urlpatterns = [
         "branches/",
         branch_list,
         name="branch-list",
+    ),
+    path(
+        "branch_detail/",
+        branch_detail,
+        name="branch-detail",
+    ),
+    path(
+        "branch_members/",
+        branch_members,
+        name="branch_members",
+    ),
+    path(
+        "branch_trainers/",
+        get_branch_trainers,
+        name="branch_members",
+    ),
+    path(
+        "exsiting_trainer/<slug:slug>/",
+        add_existing_trainer,
+        name="branch_members",
+    ),
+    path(
+        "edit_exsiting_trainer/<int:id>/",
+        edit_existing_trainer,
+        name="branch_members",
+    ),
+    path(
+        "delete_exsiting_trainer/<int:id>/",
+        delete_existing_trainer,
+        name="branch_members",
+    ),
+    path(
+        "new_trainer/",
+        add_new_trainer,
+        name="new_trainer",
+    ),
+    path(
+        "edit_new_trainer/<int:id>/",
+        edit_new_trainer,
+        name="update_new_trainaer",
+    ),
+    path(
+        "delete_new_trainer/<int:id>/",
+        delete_new_trainer,
+        name="delete_new_trainer",
+    ),
+    path(
+        "branch_subscriptions/",
+        branch_subscriptions,
+        name="branch_subscriptions",
+    ),
+    path(
+        "create_branch_subscription/",
+        create_branch_subscription,
+        name="create_branch_subscription",
+    ),
+    path(
+        "edit_branch_subscription/<int:id>/",
+        edit_branch_subscription,
+        name="edit_branch_subscription",
+    ),
+    path(
+        "delete_branch_subscription/<int:id>/",
+        delete_branch_subscription,
+        name="delete_branch_subscription",
+    ),
+    path(
+        "edit_subscription_plan/<int:duration>/",
+        edit_branch_subscription_plan,
+        name="update_branch_subscription",
+    ),
+    path(
+        "remove_subscription_plan/<int:duration>/",
+        reset_branch_subscription_plan,
+        name="reset_branch_subscription_plan",
+    ),
+    path(
+        "get_branch_galleries/",
+        get_branch_galleries,
+        name="get_branch_galleries",
+    ),
+    path(
+        "add_branch_gallery/",
+        add_branch_gallery,
+        name="add_branch_gallery",
+    ),
+    path(
+        "delete_branch_gallery/<int:id>/",
+        delete_branch_subscription,
+        name="delete_branch_gallery",
+    ),
+    path(
+        "branch_reviews/",
+        get_branch_reviews,
+        name="branch_reviews",
     ),
 ]

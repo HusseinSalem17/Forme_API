@@ -1,4 +1,3 @@
-from clubs.views import get_nearest_clubs
 from authentication.utils import IsAuthenticatedUser
 
 from .models import Program, Session, Workout, Trainer
@@ -12,7 +11,7 @@ from .serializers import (
     WorkoutDetailSerializer,
     WorkoutListSerializer,
     TrainerDetailSerializer,
-    TrainerProfileListSerializer,
+    TrainerListSerializer,
     TrainerProgramsSerializer,
 )
 from rest_framework import status
@@ -30,7 +29,7 @@ from rest_framework.decorators import api_view, permission_classes
 def TrainerProfileList(request):
     trainer_profiles = Trainer.objects.all()
     if request.method == "GET":
-        serializer = TrainerProfileListSerializer(trainer_profiles, many=True)
+        serializer = TrainerListSerializer(trainer_profiles, many=True)
         return Response(serializer.data)
     else:
         return Response(status=status.HTTP_400_BAD_REQUEST)
@@ -56,7 +55,7 @@ def TrainerProfileDetail(request, pk):
 
 def top_rated_trainers():
     trainers = Trainer.objects.order_by("-avg_ratings")[:10]
-    serializer = TrainerProfileListSerializer(trainers, many=True)
+    serializer = TrainerListSerializer(trainers, many=True)
     return serializer.data
 
 
@@ -187,7 +186,7 @@ def home(request):
             "top_trainers": top_rated_trainers(),
             "workouts": get_workouts_trainers(),
             "programs": get_programs_trainers(),
-            "nearest_clubs": get_nearest_clubs(),
+            # "nearest_clubs": get_nearest_clubs(),
         }
         return Response(data, status=status.HTTP_200_OK)
     else:
