@@ -3,30 +3,23 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-from account.models import CustomUser, Trainee
-from trainings.models import Review, Trainer
+from authentication.models import CustomUser
+from trainings.models import Program, Review, Trainee, Trainer
+from django.contrib.postgres.fields import ArrayField
 
-
-# class Owner(models.Model):
-#     user = models.OneToOneField(
-#         CustomUser,
-#         on_delete=models.CASCADE,
-#         limit_choices_to={"groups__name": None},
-#         related_name="club_owner",
-#         primary_key=True,
-#     )
-#     is_verified = models.BooleanField(default=False)
-
-#     def __str__(self):
-#         return f"{self.user.username}'s Club Owner"
+import random
 
 
 class Club(models.Model):
     property_name = models.CharField(max_length=255)
-    club_website = models.URLField(blank=True)
-    club_registration_number = models.CharField(max_length=255, blank=True)
-    documents = models.FileField(upload_to="club_documents/", blank=True)
-    sport_field = models.CharField(max_length=255, blank=True)
+    club_website = models.URLField(null=True, blank=True)
+    club_registration_number = models.CharField(max_length=255, null=True, blank=True)
+    documents = ArrayField(
+        models.FileField(upload_to="club_documents/"),
+        default=list,
+    )
+    country = models.CharField(max_length=255, null=True, blank=True)
+    sport_field = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
@@ -51,8 +44,12 @@ class Subscription(models.Model):
         decimal_places=2,
         default=0.0,
     )
-    min_age = models.PositiveIntegerField(default=18)
-    max_age = models.PositiveIntegerField(default=99)
+    min_age = models.PositiveIntegerField(
+        default=18, validators=[MinValueValidator(1), MaxValueValidator(99)]
+    )
+    max_age = models.PositiveIntegerField(
+        default=99, validators=[MinValueValidator(1), MaxValueValidator(99)]
+    )
     branch = models.ForeignKey(
         "Branch",
         on_delete=models.CASCADE,
@@ -72,7 +69,9 @@ class Subscription(models.Model):
 
 class SubscriptionPlan(models.Model):
     is_added = models.BooleanField(default=False)
-    duration = models.PositiveIntegerField()
+    duration = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -108,8 +107,8 @@ class NewTrainer(models.Model):
         blank=True,
     )
     username = models.CharField(max_length=255)
-    phone_number = models.CharField(max_length=255)
-    subscription = models.ManyToManyField(
+    phone_number = models.CharField(max_length=255, blank=True, null=True)
+    subscriptions = models.ManyToManyField(
         Subscription,
         related_name="branch_new_trainer_subscription",
         blank=True,
@@ -122,98 +121,22 @@ class NewTrainer(models.Model):
         return self.username
 
 
-class BranchTrainer(models.Model):
-    trainer = models.OneToOneField(
-        Trainer,
-        on_delete=models.CASCADE,
-        related_name="branch_trainer",
-        null=True,
-        blank=True,
-    )
-    subscription = models.ManyToManyField(
-        Subscription,
-        related_name="branch_trainer_subscription",
-        blank=True,
-    )
-    members_count = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.trainer}"
-
-
-class BranchMember(models.Model):
-    trainee = models.OneToOneField(
-        Trainee,
-        on_delete=models.CASCADE,
-        related_name="trainee_membership",
-        null=True,
-        blank=True,
-    )
-    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.trainee}"
-
-
-class MemberSubscription(models.Model):
-    member = models.ForeignKey(
-        BranchMember,
-        on_delete=models.CASCADE,
-        related_name="member_subscription",
-        null=True,
-        blank=True,
-    )
-    trainer = models.OneToOneField(
-        Trainer,
-        default=None,
-        on_delete=models.DO_NOTHING,
-        related_name="member_trainer",
-        null=True,
-        blank=True,
-    )
-    subscription = models.OneToOneField(
-        Subscription,
-        on_delete=models.CASCADE,
-        related_name="member_subscription",
-        null=True,
-        blank=True,
-    )
-    subscription_plan = models.OneToOneField(
-        SubscriptionPlan,
-        on_delete=models.CASCADE,
-        related_name="trainee_membership",
-        null=True,
-        blank=True,
-    )
-    start_date = models.DateField(null=True, blank=True)
-    end_date = models.DateField(null=True, blank=True)
-
-    def __str__(self):
-        return f"{self.member} - {self.subscription_plan}"
-
-
-class Attendance(models.Model):
-    branch_member = models.ForeignKey(
-        MemberSubscription,
-        on_delete=models.CASCADE,
-        related_name="attendance",
-        null=True,
-        blank=True,
-    )
-    date = models.DateTimeField(auto_now=True)
-    is_present = models.BooleanField(default=False)
-
-
 class Branch(models.Model):
     owner = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
-        limit_choices_to={"groups__name": None},
         related_name="branch_owner",
         unique=True,
+    )
+    current_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0,
+    )
+    total_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0,
     )
     slug = models.SlugField(unique=True, blank=True)
     club = models.ForeignKey(
@@ -225,16 +148,6 @@ class Branch(models.Model):
     )
     address = models.CharField(max_length=255)
     details = models.TextField(blank=True)
-    trainers = models.ManyToManyField(
-        BranchTrainer,
-        related_name="trainers_club",
-        blank=True,
-    )
-    members = models.ManyToManyField(
-        BranchMember,
-        related_name="trainee_club",
-        blank=True,
-    )
     total_members = models.PositiveIntegerField(default=0)
     new_members = models.PositiveIntegerField(default=0)
     is_verified = models.BooleanField(default=False)
@@ -256,13 +169,119 @@ class Branch(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            slug_str = "%s %s" % (self.club.property_name, self.id)
-            self.slug = slugify(slug_str)
+            slug_str = "%s#%s" % (
+                self.club.property_name,
+                str(random.randint(1000, 9999)),
+            )
+            print("slug_str", slug_str)
+            self.slug = slug_str.replace(" ", "-").lower()
 
         super(Branch, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.club.property_name
+
+
+class BranchTrainer(models.Model):
+    trainer = models.OneToOneField(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name="branch_trainer",
+        unique=True,
+    )
+    branch = models.OneToOneField(
+        Branch,
+        on_delete=models.CASCADE,
+        related_name="branch_trainer",
+        null=True,
+        blank=True,
+    )
+    subscriptions = models.ManyToManyField(
+        Subscription,
+        related_name="branch_trainer_subscription",
+        blank=True,
+    )
+    members_count = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.trainer}"
+
+
+class BranchMember(models.Model):
+
+    trainee = models.OneToOneField(
+        Trainee,
+        on_delete=models.CASCADE,
+        related_name="trainee_membership",
+        unique=True,
+    )
+    branch = models.OneToOneField(
+        Branch,
+        on_delete=models.CASCADE,
+        related_name="branch_member",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.trainee}"
+
+
+class MemberSubscription(models.Model):
+    STATE_CHOICES = [
+        ("active", "Active"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+        ("suspend", "Suspend"),
+    ]
+    member = models.ForeignKey(
+        BranchMember,
+        on_delete=models.CASCADE,
+        related_name="member_subscription",
+        null=True,
+        blank=True,
+    )
+    trainer = models.OneToOneField(
+        BranchTrainer,
+        default=None,
+        on_delete=models.DO_NOTHING,
+        related_name="member_trainer",
+        null=True,
+        blank=True,
+    )
+    subscription_plan = models.OneToOneField(
+        SubscriptionPlan,
+        on_delete=models.DO_NOTHING,
+        related_name="trainee_membership",
+        null=True,
+        blank=True,
+    )
+    state = models.CharField(
+        max_length=255,
+        choices=STATE_CHOICES,
+        default="active",
+    )
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.member} - {self.subscription_plan}"
+
+
+class Attendance(models.Model):
+    branch_member = models.ForeignKey(
+        MemberSubscription,
+        on_delete=models.CASCADE,
+        related_name="attendance",
+        null=True,
+        blank=True,
+    )
+    date = models.DateTimeField(auto_now=True)
+    is_present = models.BooleanField(default=False)
 
 
 class ContactUs(models.Model):
@@ -326,7 +345,7 @@ class Facilities(models.Model):
 
 
 class BranchGallery(models.Model):
-    galleries = models.ImageField(upload_to="club_galleries/")
+    gallery = models.ImageField(upload_to="club_galleries/")
     branch = models.ForeignKey(
         Branch,
         on_delete=models.CASCADE,
@@ -337,3 +356,33 @@ class BranchGallery(models.Model):
 
     def __str__(self):
         return f"Club Gallery Image: {self.branch}"
+
+
+class TraineeWishList(models.Model):
+    trainee = models.OneToOneField(
+        Trainee,
+        on_delete=models.CASCADE,
+        related_name="trainee_wishlist",
+        null=True,
+        blank=True,
+    )
+    programs_wishlist = models.ManyToManyField(
+        Program,
+        related_name="trainee_wishlist",
+        blank=True,
+    )
+    trainers_wishlist = models.ManyToManyField(
+        Trainer,
+        related_name="trainee_wishlist",
+        blank=True,
+    )
+    club_wishlist = models.ManyToManyField(
+        Club,
+        related_name="trainee_wishlist",
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.trainee}"

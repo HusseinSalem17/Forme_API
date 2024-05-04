@@ -1,179 +1,2064 @@
-from authentication.utils import IsAuthenticatedUser
-from account.serializers import (
-    CustomUserClubPostSerializer,
-    CustomUserClubPutSerializer,
+from authentication.models import CustomUser
+from authentication.serializers import LogoutSerializer
+
+from .utils import handle_validation_error
+from trainings.serializers import (
+    PaymentAddSerializer,
+    PaymentSerializer,
+    ReviewsDetailSerializer,
 )
-from trainings.serializers import ReviewsDetailSerializer
-from trainings.models import Trainer
+from trainings.models import Trainee, Trainer
 from .serializers import (
+    AttendanceSerializer,
+    AttendanceUpdateSerializer,
+    BranchAddSerializer,
     BranchDetailSerializer,
     BranchGallerySerializer,
     BranchListSerializer,
+    BranchLoginSerializer,
+    BranchMemberJoinSerializer,
     BranchMemberSerializer,
-    BranchPostSerializer,
-    BranchPutSerializer,
-    BranchTrainerPutSerializer,
+    BranchMemberUpdateSerializer,
+    BranchTrainerUpdateSerializer,
     BranchTrainerSerializer,
-    ClubPostSerializer,
-    ClubPutSerializer,
+    BranchUpdateSerializer,
     ClubsListSerializer,
-    NewTrainerPostSerializer,
-    NewTrainerPutSerializer,
+    NewTrainerAddSerializer,
+    NewTrainerConvertSerializer,
+    NewTrainerUpdateSerializer,
     NewTrainerSerializer,
-    SubscriptionPlanPutSerializer,
-    SubscriptionPostSerializer,
-    SubscriptionPutSerializer,
+    SubscriptionAddSerializer,
+    SubscriptionUpdateSerializer,
     SubscriptionSerializer,
+    TraineeBranchDetailSerializer,
+    TrainerExistingAddSerializer,
 )
 from .models import (
+    Attendance,
     Branch,
     BranchGallery,
     BranchMember,
     BranchTrainer,
     Club,
+    MemberSubscription,
     NewTrainer,
     Subscription,
     SubscriptionPlan,
 )
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.generics import GenericAPIView
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
+from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.db import IntegrityError
+
+from django.db.models import Min
+
+from django.db.models import Count
+from django.db.models.functions import TruncMonth, TruncWeek
+
+from datetime import datetime
+
+from dateutil.relativedelta import relativedelta
 
 
-# Create your views here.
-# def get_nearest_clubs():
-#     clubs = Owner.objects.all()
-#     serializer = OwnerDetailSerializer(clubs, many=True)
-#     return serializer.data
+# -----------------CLUBS-----------------#
 
 
-@api_view(["POST"])
-def register_branch(request):
-    try:
+# for attendance update (club)
+class AttendanceUpdateView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = AttendanceUpdateSerializer
 
-        if request.method == "POST":
-            owner_data = request.data.get("owner", {})
-            club_data = request.data.get("club", {})
-            branch_data = request.data.get("branch", {})
-            # Validate the owner data
-            owner_serializer = CustomUserClubPostSerializer(data=owner_data)
-            if not owner_serializer.is_valid():
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Update the attendance of a trainee",
+        request_body=AttendanceUpdateSerializer,
+        responses={
+            200: AttendanceSerializer,
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": "This field is required"},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def put(self, request, attendance_id):
+        try:
+            attendance = Attendance.objects.get(id=attendance_id)
+            serializer = self.get_serializer(
+                attendance, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            attendance = serializer.save()
+            return Response(
+                AttendanceSerializer(attendance).data,
+                status=status.HTTP_200_OK,
+            )
+        except Attendance.DoesNotExist:
+            return Response(
+                {"error": "Attendance not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch delete (club)
+class BranchDeleteView(GenericAPIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Delete the branch account",
+        operation_id="Branch Delete",
+        tags=["clubs"],
+        responses={
+            200: BranchDetailSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request):
+        try:
+            owner = request.user
+            if not owner.is_owner:
                 return Response(
-                    owner_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
+            branch = Branch.objects.get(owner=owner)
+            branch.delete()
+            return Response(
+                {"message": "Branch deleted successfully"}, status=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-            # Validate the club data
-            club_serializer = ClubPostSerializer(data=club_data)
-            if not club_serializer.is_valid():
+
+# for branch detail (club)
+class BranchDetailView(GenericAPIView):
+    serializer_class = BranchDetailSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Get the branch details",
+        tags=["clubs"],
+        responses={
+            200: BranchDetailSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        try:
+            owner = request.user
+            if not owner.is_owner:
                 return Response(
-                    club_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
+            branch = Branch.objects.get(owner=owner)
+            serializer = self.get_serializer(branch)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-            # Validate the branch data
-            branch_serializer = BranchPostSerializer(data=branch_data)
-            if not branch_serializer.is_valid():
-                return Response(
-                    branch_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
 
-            # create the owner
-            owner = owner_serializer.save()
-            # create the club
-            club = club_serializer.save()
-            # create the branch
-            branch = branch_serializer.save(owner=owner, club=club)
+# for branch login (club)
+class BranchLoginView(GenericAPIView):
+    serializer_class = BranchLoginSerializer
+
+    @swagger_auto_schema(
+        request_body=BranchLoginSerializer,
+        operation_description="Login to the branch account",
+        tags=["clubs"],
+        operation_id="Branch Login",
+        responses={
+            200: openapi.Response(
+                "OK",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "access": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Access token"
+                        ),
+                        "refresh": openapi.Schema(
+                            type=openapi.TYPE_STRING, description="Refresh token"
+                        ),
+                    },
+                    example={
+                        "access": "access_token_string",
+                        "refresh": "refresh_token_string",
+                    },
+                ),
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+    )
+    def post(self, request):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            user = CustomUser.objects.get(email=serializer.validated_data["email"])
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                }
+            )
+
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch register (club)
+class BranchRegisterView(GenericAPIView):
+    serializer_class = BranchAddSerializer
+
+    @swagger_auto_schema(
+        operation_description="Register a new branch",
+        request_body=openapi.Schema(
+            tags=["clubs"],
+            operation_id="Branch Register",
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "owner": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "username": openapi.Schema(type=openapi.TYPE_STRING),
+                        "email": openapi.Schema(
+                            type=openapi.FORMAT_EMAIL,
+                            example="user@example.com",
+                        ),
+                        "password": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="eightcharactersatleast",
+                        ),
+                        "confirm_password": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="eightcharactersatleast",
+                        ),
+                        "profile_picture": openapi.Schema(
+                            type=openapi.TYPE_FILE,
+                            example="profile_picture.jpg",
+                        ),
+                        "date_of_birth": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            format="date",
+                            example="1990-01-01",
+                        ),
+                        "gender": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="male",
+                        ),
+                        "country": openapi.Schema(type=openapi.TYPE_STRING),
+                        "phone_number": openapi.Schema(type=openapi.TYPE_STRING),
+                    },
+                ),
+                "club": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "property_name": openapi.Schema(type=openapi.TYPE_STRING),
+                        "club_website": openapi.Schema(
+                            type=openapi.TYPE_STRING, exampl="www.example.com"
+                        ),
+                        "club_registration_number": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="123456",
+                        ),
+                        "documents": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_FILE),
+                            example=["profile_picture.jpg", "document.pdf"],
+                        ),
+                        "sport_field": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="Football",
+                        ),
+                    },
+                ),
+                "address": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="123, ABC Street, XYZ City",
+                ),
+                "details": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example="Details about the branch",
+                ),
+            },
+        ),
+        responses={
+            200: BranchAddSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+    )
+    def post(self, request):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            # create the owner, club, and branch
+            serializer.save()
 
             return Response(
-                {"message": "Branch registered successfully"},
+                {"message": "Branch registered successfully, we will contact you soon"},
                 status=status.HTTP_201_CREATED,
             )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
 
-    except Exception as e:
-        print("error7", e)
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["PUT"])
-@permission_classes([IsAuthenticatedUser])
-def edit_branch(request):
-    try:
-        branch = Branch.objects.get(owner=request.user)
-    except Branch.DoesNotExist:
-        return Response({"error": "Branch not found"}, status=status.HTTP_404_NOT_FOUND)
-    print("here")
-    if request.method == "PUT":
-        data = request.data
-        if "owner" in data:
-            owner_serializer = CustomUserClubPutSerializer(
-                branch.owner, data=data["owner"], partial=True
-            )
-            print("owner")
-            if owner_serializer.is_valid():
-                owner_serializer.save()
-            else:
-                return Response(
-                    owner_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
-            data.pop("owner")
-
-        if "club" in data:
-            club_serializer = ClubPutSerializer(
-                branch.club, data=data["club"], partial=True
-            )
-            if club_serializer.is_valid():
-                club_serializer.save()
-            else:
-                return Response(
-                    club_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
-            data.pop("club")
-
-        serializer = BranchPutSerializer(branch, data=data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except IntegrityError:
             return Response(
-                {"message": "Branch updated successfully"}, status=status.HTTP_200_OK
+                {"error": "User with this email already exists"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    else:
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
-@api_view(["GET"])
-def club_list(request):
-    clubs = Club.objects.all()
-    if request.method == "GET":
-        serializer = ClubsListSerializer(clubs, many=True)
+# for branch update (club)
+class BranchUpdateView(GenericAPIView):
+    serializer_class = BranchUpdateSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Update the branch details",
+        request_body=openapi.Schema(
+            tags=["clubs"],
+            operation_id="Branch Update",
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "owner": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "username": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="username",
+                        ),
+                        "date_of_birth": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            format="date",
+                            example="1990-01-01",
+                        ),
+                        "profile_picture": openapi.Schema(
+                            type=openapi.TYPE_FILE,
+                            example="profile_picture.jpg",
+                        ),
+                        "gender": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="male",
+                        ),
+                        "country": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="India",
+                        ),
+                        "phone_number": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="1234567890",
+                        ),
+                    },
+                ),
+                "club": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        "property_name": openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            example="property_name",
+                        ),
+                        "club_website": openapi.Schema(
+                            type=openapi.FORMAT_URI,
+                            example="www.example.com",
+                        ),
+                        "club_registration_number": openapi.Schema(
+                            type=openapi.TYPE_STRING
+                        ),
+                        "documents": openapi.Schema(
+                            type=openapi.TYPE_ARRAY,
+                            items=openapi.Schema(type=openapi.TYPE_FILE),
+                            example=("document1.pdf", "document2.pdf"),
+                        ),
+                        "sport_field": openapi.Schema(type=openapi.TYPE_STRING),
+                    },
+                ),
+                "address": openapi.Schema(
+                    type=openapi.TYPE_STRING, example="123, ABC Street, XYZ City"
+                ),
+                "details": openapi.Schema(
+                    type=openapi.TYPE_STRING, example="Details about the branch"
+                ),
+            },
+        ),
+        responses={
+            200: BranchDetailSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def patch(self, request):
+        try:
+            print("reached here0")
+            owner = request.user
+            if not owner.is_owner:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            branch = Branch.objects.get(owner=owner)
+            serializer = self.get_serializer(branch, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            branch = serializer.save()
+            return Response(
+                BranchDetailSerializer(branch).data, status=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# to add existing trainer (club)
+class ExistingTrainerAddView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TrainerExistingAddSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_id="Add Existing Trainer",
+        operation_description="Add an existing trainer to the branch",
+        request_body=TrainerExistingAddSerializer,
+        responses={
+            200: BranchTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        branch_trainer = serializer.save()
+        return Response(
+            BranchTrainerSerializer(branch_trainer).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# for existing trainer delete (club)
+class ExistingTrainerDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete an existing trainer from the branch",
+        responses={
+            200: BranchTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, trainer_id):
+        try:
+            owner = request.user
+            if not owner.is_owner:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            branch = Branch.objects.filter(owner=owner).first()
+            trainer = Trainer.objects.get(id=trainer_id)
+            branch_trainer = BranchTrainer.objects.get(trainer=trainer)
+            if not branch_trainer:
+                return Response(
+                    {"error": "Branch trainer not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if branch_trainer in branch.trainers.all():
+                branch_trainer.delete()
+                return Response(
+                    {"message": "Branch trainer deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"error": "Branch trainer not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        except BranchTrainer.DoesNotExist:
+            return Response(
+                {"error": "Branch trainer not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for existing trainer update (club)
+class ExistingTrainerUpdateView(GenericAPIView):
+    serializer_class = BranchTrainerUpdateSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_id="Update Existing Trainer",
+        operation_description="Update the details of an existing trainer",
+        request_body=BranchTrainerUpdateSerializer,
+        responses={
+            200: BranchTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def patch(self, request, trainer_id):
+        try:
+            owner = request.user
+            if not owner.is_owner:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            user = CustomUser.objects.get(id=trainer_id)
+            trainer = Trainer.objects.get(user=user)
+            branch_trainer = BranchTrainer.objects.get(trainer=trainer)
+            serializer = self.get_serializer(
+                branch_trainer, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            branch_trainer = serializer.save()
+            print("reached here")
+            return Response(
+                BranchTrainerSerializer(branch_trainer).data, status=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch galleries (club)
+class BranchGalleriesView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = BranchGallerySerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Get all the galleries of the branch",
+        responses={
+            200: BranchGallerySerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        owner = request.user
+        branch = Branch.objects.filter(owner=owner).first()
+        gallery = BranchGallery.objects.filter(branch=branch)
+        serializer = self.get_serializer(gallery, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["GET"])
-def branch_list(request):
-    branches = Branch.objects.all()
-    if request.method == "GET":
-        serializer = BranchListSerializer(branches, many=True)
+# for branch gallery add (club)
+class BranchGalleryAddView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = BranchGallerySerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Add a new gallery to the branch",
+        request_body=BranchGallerySerializer(),
+        responses={
+            200: BranchDetailSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            branch_gallery = serializer.save(branch=branch)
+            branch = Branch.objects.get(id=branch_gallery.branch.id)
+            return Response(
+                BranchDetailSerializer(branch).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch gallery delete (club)
+class BranchGalleryDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a gallery from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Gallery deleted successfully",
+                    ),
+                },
+                example={"message": "Gallery deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, gallery_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            gallery = BranchGallery.objects.get(id=gallery_id)
+            if gallery.branch == branch:
+                gallery.delete()
+                return Response(
+                    {"message": "Gallery deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except BranchGallery.DoesNotExist:
+            return Response(
+                {"error": "Gallery not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch member (club)
+class BranchMembersView(GenericAPIView):
+    serializer_class = BranchMemberSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        opearation_description="Get all the members of the branch",
+        responses={
+            200: BranchMemberSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            members = branch.members.all()
+            return Response(
+                BranchMemberSerializer(members, many=True).data,
+                status=status.HTTP_200_OK,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for new trainer add (club)
+class NewTrainerAddView(GenericAPIView):
+    serializer_class = NewTrainerAddSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        responses={
+            200: NewTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            trainer = serializer.save(branch=branch)
+            return Response(
+                NewTrainerSerializer(trainer).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for new trainer convert (club)
+class NewTrainerConvertView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = NewTrainerConvertSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Convert a new trainer to an existing trainer",
+        request_body=NewTrainerConvertSerializer(),
+        responses={
+            200: BranchTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request, new_trainer_id):
+        try:
+            owner = request.user
+            if not owner.is_owner:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            branch = Branch.objects.filter(owner=owner).first()
+            serializer = self.get_serializer(
+                data=request.data,
+                context={"request": request, "new_trainer_id": new_trainer_id},
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            trainer = serializer.save(branch=branch)
+            return Response(
+                BranchTrainerSerializer(trainer).data, status=status.HTTP_200_OK
+            )
+        except Trainer.DoesNotExist:
+            return Response(
+                {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for new trainer delete (club)
+class NewTrainerDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a new trainer from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Trainer deleted successfully",
+                    ),
+                },
+                example={"message": "Trainer deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            trainer = NewTrainer.objects.get(id=id)
+            if trainer.branch == branch:
+                trainer.delete()
+                return Response(
+                    {"message": "Trainer deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except NewTrainer.DoesNotExist:
+            return Response(
+                {"error": "Trainer not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for new trainer edit (club)
+class NewTrainerUpdateView(GenericAPIView):
+    serializer_class = NewTrainerUpdateSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Update the details of a new trainer",
+        responses={
+            200: NewTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def patch(self, request, trainer_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            trainer = NewTrainer.objects.get(id=trainer_id)
+            serializer = self.get_serializer(trainer, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            trainer = serializer.save(branch=branch)
+            return Response(
+                NewTrainerSerializer(trainer).data, status=status.HTTP_200_OK
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch reviews (club)
+class BranchReviewsView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = ReviewsDetailSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Get all the reviews of the branch",
+        responses={
+            200: ReviewsDetailSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        owner = request.user
+        branch = Branch.objects.filter(owner=owner).first()
+        reviews = branch.reviews.all()
+        serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def branch_detail(request):
-    owner = request.user
-    branch = Branch.objects.filter(owner=owner)
-    if request.method == "GET":
-        serializer = BranchDetailSerializer(branch, many=True)
+# for branch subscriptions (club)
+class BranchSubscriptionsView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = SubscriptionSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Get all the subscriptions of the branch",
+        responses={
+            200: SubscriptionSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        owner = request.user
+        branch = Branch.objects.filter(owner=owner).first()
+        subscriptions = Subscription.objects.filter(branch=branch)
+        serializer = self.get_serializer(subscriptions, many=True)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+
+# for branch subscription plans (club)
+class BranchSubscriptionPlanDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a subscription plan from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Subscription plan deleted successfully",
+                    ),
+                },
+                example={"message": "Subscription plan deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, subscription_plan_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            subscription_plan = SubscriptionPlan.objects.get(id=subscription_plan_id)
+            if subscription_plan.subscription.branch == branch:
+                subscription_plan.delete()
+                return Response(
+                    {"message": "Subscription plan deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except SubscriptionPlan.DoesNotExist:
+            return Response(
+                {"error": "Subscription plan not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch subscription add (club)
+class BranchSubscriptionAddView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = SubscriptionAddSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Add a new subscription to the branch",
+        responses={
+            200: SubscriptionSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        owner = request.user
+        branch = Branch.objects.filter(owner=owner).first()
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        subscriptions = serializer.save(branch=branch)
+
+        return Response(
+            SubscriptionSerializer(subscriptions).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# for branch subscription update (club)
+class BranchSubscriptionUpdateView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = SubscriptionUpdateSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Update the details of a subscription",
+        responses={
+            200: SubscriptionSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def put(self, request, subscription_id):
+        owner = request.user
+        branch = Branch.objects.filter(owner=owner).first()
+        subscription = Subscription.objects.get(id=subscription_id)
+        serializer = self.get_serializer(subscription, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        subscription = serializer.save(branch=branch)
+        return Response(
+            SubscriptionSerializer(subscription).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+# for branch subscription delete (club)
+class BranchSubscriptionDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a subscription from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Subscription deleted successfully",
+                    ),
+                },
+                example={"message": "Subscription deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, subscription_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            subscription = Subscription.objects.get(id=subscription_id)
+            if subscription.branch == branch:
+                subscription.delete()
+                return Response(
+                    {"message": "Subscription deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"error": "Subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        except Subscription.DoesNotExist:
+            return Response(
+                {"error": "Subscription not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# under testing
+class BranchMembersCountView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Get the number of members in the branch",
+        responses={200: BranchMemberSerializer()},
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request, *args, **kwargs):
+        period = self.request.query_params.get("period", "month")
+        if period == "week":
+            members_count = (
+                BranchMember.objects.annotate(date=TruncWeek("created_at"))
+                .values("date")
+                .annotate(count=Count("id"))
+                .order_by("date")
+            )
+        elif period == "4months":
+            members_count = (
+                BranchMember.objects.filter(
+                    created_at__gte=datetime.now() - relativedelta(months=4)
+                )
+                .annotate(date=TruncMonth("created_at"))
+                .values("date")
+                .annotate(count=Count("id"))
+                .order_by("date")
+            )
+        else:
+            members_count = (
+                BranchMember.objects.annotate(date=TruncMonth("created_at"))
+                .values("date")
+                .annotate(count=Count("id"))
+                .order_by("date")
+            )
+        return Response(members_count)
+
+
+#  ------------------***************------------------  #
+
+
+#  ------------------- Trainee App -------------------  #
+
+
+# for branch detail (trainee)
+class TraineeBranchDetailView(GenericAPIView):
+    serializer_class = TraineeBranchDetailSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Get the branch details",
+        tags=["Trainee App"],
+        responses={
+            200: TraineeBranchDetailSerializer,
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request, branch_id):
+        try:
+            branch = Branch.objects.get(id=branch_id)
+            serializer = self.get_serializer(branch)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch list (trainee)
+class BranchListView(GenericAPIView):
+
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = BranchListSerializer
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all branches",
+        responses={
+            200: BranchListSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        try:
+            user = request.user
+            if not user.is_trainee:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_404_FORBIDDEN,
+                )
+            branches = Branch.objects.all()
+            serializer = self.get_serializer(branches, many=True)
+            serializer.is_valid(raise_exception=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch member add (trainee)
+class BranchMemberJoinView(GenericAPIView):
+    serializer_class = BranchMemberJoinSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Join a branch as a member",
+        request_body=BranchMemberJoinSerializer(),
+        responses={
+            200: BranchMemberSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user.is_trainee:
+            return Response(
+                {"error": "You are not authorized to perform this action"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = self.get_serializer(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        branch_member = serializer.save()
+        return Response(
+            BranchMemberSerializer(branch_member).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+# for branch same country (trainee)
+class ClubSameCountryView(GenericAPIView):
+    serializer_class = ClubsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all clubs that have branches in the user's country",
+        responses={200: ClubsListSerializer},
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        # Get the user's country
+        user = request.user
+        user_country = user.country
+
+        # Get all branches that have non-empty subscriptions
+        branches_with_subscriptions = Branch.objects.filter(
+            branch_subscription__isnull=False
+        )
+
+        # Get all clubs in the user's country that have these branches
+        clubs = Club.objects.filter(
+            club_branches__in=branches_with_subscriptions, country=user_country
+        )
+
+        serializer = self.serializer_class(clubs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+# for branch Nearest to Farthest (trainee)
+class ClubNearestToFarthestView(GenericAPIView):
+    serializer_class = ClubsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all clubs sorted by distance from the user's location",
+        responses={200: ClubsListSerializer},
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        # Get the user's location
+        user = request.user
+        user_location = user.location
+
+        # Get all branches
+        branches = Branch.objects.all()
+
+        # Calculate the distance of each branch from the user's location
+        for branch in branches:
+            branch.distance = branch.location.distance(user_location)
+
+        # Sort the branches by distance
+        branches = sorted(branches, key=lambda x: x.distance)
+
+        # Get all clubs that have these branches and non-empty subscriptions
+        clubs = Club.objects.filter(
+            club_branches__in=branches, subscriptions__isnull=False
+        )
+
+        serializer = self.serializer_class(clubs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-def branch_trainers(request):
+# to get all trainers (trainee)
+class BranchTrainersView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all trainers in the branch",
+        responses={
+            200: BranchTrainerSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        try:
+            branch_trainers_response = get_branch_trainers(request)
+            new_trainers_response = get_new_trainers(request)
+
+            # Combine responses into a single response
+            combined_response_data = {
+                "trainers": branch_trainers_response.data,
+                "new_trainers": new_trainers_response.data,
+            }
+
+            return Response(combined_response_data, status=status.HTTP_200_OK)
+
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for club list (trainee)
+class ClubListView(GenericAPIView):
+    serializer_class = ClubsListSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all clubs",
+        responses={
+            200: ClubsListSerializer(),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        try:
+            user = request.user
+            if not user.is_trainee:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_404_FORBIDDEN,
+                )
+            clubs = Club.objects.all()
+            print("reached here0")
+            serializer = self.get_serializer(clubs, many=True)
+            print("reached here")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+
+# for branch Ascending order of price (trainee)
+class ClubLowestToHighestPricebyView(GenericAPIView):
+    serializer_class = ClubsListSerializer
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Get all clubs sorted by the price of their subscriptions in ascending order",
+        responses={200: ClubsListSerializer},
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def get(self, request):
+        # Get the minimum price of all subscriptions
+        min_price = Subscription.objects.aggregate(Min("price"))["price__min"]
+
+        # Get all branches that have a subscription with the minimum price
+        branches = Branch.objects.filter(branch_subscription__price=min_price)
+
+        # Get all clubs that have these branches
+        clubs = Club.objects.filter(club_branches__in=branches)
+
+        serializer = self.serializer_class(clubs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+# for member subscription delete (trainee)
+class MemberSubscriptionDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Delete a member subscription",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Member subscription deleted successfully",
+                    ),
+                },
+                example={"message": "Member subscription deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": "Member subscription not found"},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, member_subscription_id):
+        try:
+            member_subscription = MemberSubscription.objects.get(
+                id=member_subscription_id
+            )
+            member_subscription.delete()
+            return Response(
+                {"message": "Member subscription deleted successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except MemberSubscription.DoesNotExist:
+            return Response(
+                {"error": "Member subscription not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# for branch member update (trainee)
+class BranchMemberUpdateView(GenericAPIView):
+    serializer_class = BranchMemberUpdateSerializer
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["Trainee App"],
+        operation_description="Update the details of a branch member",
+        request_body=BranchMemberUpdateSerializer,
+        responses={
+            200: BranchMemberSerializer,
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def put(self, request, member_id):
+        user = request.user
+        if not user.is_trainee:
+            return Response(
+                {"error": "You are not authorized to perform this action"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        member = BranchMember.objects.get(id=member_id)
+        serializer = self.get_serializer(
+            member, data=request.data, context={"request": request}, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        branch_member = serializer.save()
+        return Response(
+            BranchMemberSerializer(branch_member).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+# for payment and branch member add (trainee)
+class PaymentAndBranchMemberAddView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        operation_description="Add a payment and add a branch member",
+        tags=["Trainee App"],
+        operation_id="PaymentAndBranchMemberAddView",
+        responses={201: "Created", 400: "Bad Request"},
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "payment": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        field_name: openapi.Schema(type=openapi.TYPE_STRING)
+                        for field_name in PaymentAddSerializer().fields.keys()
+                    },
+                ),
+                "branch_member": openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        field_name: openapi.Schema(type=openapi.TYPE_STRING)
+                        for field_name in BranchMemberJoinSerializer().fields.keys()
+                    },
+                ),
+            },
+        ),
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearertoken>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            )
+        ],
+    )
+    def post(self, request):
+        user = request.user
+        if not user.is_trainee:
+            return Response(
+                {"message": "You are not a trainee"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        trainee = Trainee.objects.get(user=user)
+
+        # Add a payment
+        payment_serializer = PaymentAddSerializer(
+            data=request.data.get("payment"),
+            context={"request": request},
+        )
+        if payment_serializer.is_valid():
+            payment = payment_serializer.save(trainee=trainee)
+        else:
+            return Response(
+                payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Add a branch member
+        branch_member_serializer = BranchMemberJoinSerializer(
+            data=request.data.get("branch_member"), context={"request": request}
+        )
+        if branch_member_serializer.is_valid():
+            branch_member = branch_member_serializer.save()
+        else:
+            return Response(
+                branch_member_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return Response(
+            {
+                "payment": PaymentSerializer(payment).data,
+                "branch_member": BranchMemberSerializer(branch_member).data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+def get_branch_trainers(request):
     owner = request.user
     branch = Branch.objects.filter(owner=owner)
     if request.method == "GET":
@@ -192,384 +2077,6 @@ def get_new_trainers(request):
     new_trainers = NewTrainer.objects.filter(branch=branch)
     if request.method == "GET":
         serializer = NewTrainerSerializer(new_trainers, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def get_branch_trainers(request):
-    try:
-        branch_trainers_response = branch_trainers(request)
-        new_trainers_response = get_new_trainers(request)
-
-        # Combine responses into a single response
-        combined_response_data = {
-            "existing_trainers": branch_trainers_response.data,
-            "new_trainers": new_trainers_response.data,
-        }
-
-        return Response(combined_response_data, status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticatedUser])
-def add_existing_trainer(request, slug):
-    owner = request.user
-    branch = Branch.objects.filter(owner=owner).first()
-    trainer = Trainer.objects.filter(slug=slug).first()
-    if not trainer:
-        return Response(
-            {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
-        )
-    trainer = BranchTrainer.objects.create(trainer=trainer)
-    if not branch:
-        return Response({"error": "Branch not found"}, status=status.HTTP_404_NOT_FOUND)
-    branch.trainers.add(trainer)
-    return Response(
-        {"message": "Trainer added successfully"}, status=status.HTTP_201_CREATED
-    )
-
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticatedUser])
-def edit_existing_trainer(request, id):
-    if request.method in ["PUT", "PATCH"]:
-        branch_trainer = BranchTrainer.objects.get(id=id)
-        serializer = BranchTrainerPutSerializer(
-            branch_trainer,
-            data=request.data,
-            partial=True,
-        )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {"message": "Branch trainer updated successfully"},
-                status=status.HTTP_200_OK,
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticatedUser])
-def delete_existing_trainer(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        branch_trainer = BranchTrainer.objects.get(id=id)
-        if request.method == "DELETE" and branch_trainer in branch.trainers.all():
-            branch_trainer.delete()
-            return Response(
-                {"message": "Branch trainer deleted successfully"},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except BranchTrainer.DoesNotExist:
-        return Response(
-            {"error": "Branch trainer not found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticatedUser])
-def add_new_trainer(request):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        if request.method == "POST":
-            serializer = NewTrainerPostSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(branch=branch)
-                return Response(
-                    {"message": "Trainer added successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticatedUser])
-def edit_new_trainer(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        if request.method == "PUT" or request.method == "PATCH":
-            trainer = NewTrainer.objects.get(id=id)
-            serializer = NewTrainerPutSerializer(trainer, data=request.data)
-            if serializer.is_valid():
-                serializer.save(branch=branch)
-                return Response(
-                    {"message": "Trainer updated successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticatedUser])
-def delete_new_trainer(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        trainer = NewTrainer.objects.get(id=id)
-        if request.method == "DELETE" and trainer.branch == branch:
-            trainer.delete()
-            return Response(
-                {"message": "Trainer deleted successfully"},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except NewTrainer.DoesNotExist:
-        return Response(
-            {"error": "Trainer not found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def branch_members(request):
-    owner = request.user
-    branch = Branch.objects.filter(owner=owner)
-    if request.method == "GET":
-        members = branch.values("members")
-        members = BranchMember.objects.filter(id__in=members)
-        print("heremember", members)
-        serializer = BranchMemberSerializer(members, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def branch_subscriptions(request):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(
-            owner=owner
-        ).first()  # Use .first() to get a single branch
-        if not branch:
-            return Response(
-                {"error": "Branch not found"}, status=status.HTTP_404_NOT_FOUND
-            )
-
-        subscriptions = Subscription.objects.filter(branch=branch)
-        if request.method == "GET":
-            serializer = SubscriptionSerializer(subscriptions, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticatedUser])
-def create_branch_subscription(request):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        if request.method == "POST":
-            serializer = SubscriptionPostSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(branch=branch)
-                return Response(
-                    {"message": "Subscription added successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticatedUser])
-def edit_branch_subscription(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        subscription = Subscription.objects.get(id=id)
-        if (
-            request.method == "PUT" or request.method == "PATCH"
-        ) and subscription.branch == branch:
-            serializer = SubscriptionPutSerializer(subscription, data=request.data)
-            if serializer.is_valid():
-                serializer.save(branch=branch)
-                return Response(
-                    {"message": "Subscription updated successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticatedUser])
-def delete_branch_subscription(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        subscription = Subscription.objects.get(id=id)
-        if request.method == "DELETE" and subscription.branch == branch:
-            subscription.delete()
-            return Response(
-                {"message": "Subscription deleted successfully"},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Subscription.DoesNotExist:
-        return Response(
-            {"error": "Subscription not found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticatedUser])
-def edit_branch_subscription_plan(request, duration):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        subscription_plan = SubscriptionPlan.objects.get(duration=duration)
-        if (
-            request.method in ["PUT", "PATCH"]
-            and subscription_plan.subscription.branch == branch
-        ):
-            serializer = SubscriptionPlanPutSerializer(
-                subscription_plan, data=request.data
-            )
-            if serializer.is_valid():
-                serializer.save(branch=branch, is_added=True)
-                return Response(
-                    {"message": "Subscription plan updated successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["PUT", "PATCH"])
-@permission_classes([IsAuthenticatedUser])
-def reset_branch_subscription_plan(request, duration):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        subscription_plan = SubscriptionPlan.objects.get(duration=duration)
-        if (
-            request.method in ["PUT", "PATCH"]
-            and subscription_plan.subscription.branch == branch
-        ):
-            subscription_plan.is_added = False
-            subscription_plan.price = subscription_plan.subscription.price * duration
-            subscription_plan.save()
-            return Response(
-                {"message": "Subscription plan reset successfully"},
-                status=status.HTTP_201_CREATED,
-            )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def get_branch_galleries(request):
-    owner = request.user
-    branch = Branch.objects.filter(owner=owner).first()
-    if request.method == "GET":
-        gallery = BranchGallery.objects.filter(branch=branch)
-        serializer = BranchGallerySerializer(gallery, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    else:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticatedUser])
-def add_branch_gallery(request):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        if request.method == "POST":
-            serializer = BranchGallerySerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save(branch=branch)
-                return Response(
-                    {"message": "Gallery added successfully"},
-                    status=status.HTTP_201_CREATED,
-                )
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticatedUser])
-def delete_branch_gallery(request, id):
-    try:
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        gallery = BranchGallery.objects.get(id=id)
-        if request.method == "DELETE" and gallery.branch == branch:
-            gallery.delete()
-            return Response(
-                {"message": "Gallery deleted successfully"},
-                status=status.HTTP_200_OK,
-            )
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST)
-    except BranchGallery.DoesNotExist:
-        return Response(
-            {"error": "Gallery not found"},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticatedUser])
-def get_branch_reviews(request):
-    owner = request.user
-    branch = Branch.objects.filter(owner=owner).first()
-    if request.method == "GET":
-        reviews = branch.reviews.all()
-        serializer = ReviewsDetailSerializer(reviews, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     else:
         return Response(status=status.HTTP_400_BAD_REQUEST)

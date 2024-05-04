@@ -1,12 +1,31 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericRelation, GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericRelation
 from django.core.validators import MinValueValidator, MaxValueValidator
+
+from authentication.models import CustomUser
 from django.core.exceptions import ValidationError
-from django.utils.text import slugify
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.postgres.fields import ArrayField
 
-from account.models import CustomUser, Trainee
+import random
+
+
+class Trainee(models.Model):
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="trainee_profile",
+        primary_key=True,
+    )
+    height = models.FloatField(blank=True, null=True)
+    weight = models.FloatField(blank=True, null=True)
+    fitness_goals = models.TextField(blank=True)
+    current_physical_level = models.CharField(max_length=255, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s Trainee Profile"
 
 
 class Review(models.Model):
@@ -30,6 +49,7 @@ class Review(models.Model):
         null=True,
         blank=True,
     )
+
     object_id = models.PositiveIntegerField(null=True, blank=True)
     content_object = GenericForeignKey("content_type", "object_id")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -77,28 +97,10 @@ class Review(models.Model):
                 raise ValidationError("The specified object does not exist.")
 
 
-class Transformations(models.Model):
-    before_picture = models.ImageField(upload_to="transformations_pictures/")
-    after_picture = models.ImageField(upload_to="transformations_pictures/")
-    details = models.TextField(blank=True)
-    trainer = models.ForeignKey(
-        "Trainer",
-        on_delete=models.CASCADE,
-        related_name="trainer_transformations",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.trainee.user.username}'s Transformation"
-
-
-# Create your models here.
 class Trainer(models.Model):
     user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
-        limit_choices_to={"groups__name": None},
         related_name="trainer_profile",
         primary_key=True,
     )
@@ -109,7 +111,10 @@ class Trainer(models.Model):
         blank=True,
     )
     is_active = models.BooleanField(default=False)
-    document_files = models.FileField(upload_to="certifications/", blank=True)
+    document_files = ArrayField(
+        models.FileField(upload_to="club_documents/"),
+        default=list,
+    )
     id_card = models.FileField(upload_to="id_cards/", blank=True)
     background_image = models.ImageField(upload_to="background_images/", blank=True)
     number_of_trainees = models.PositiveIntegerField(default=0)
@@ -120,15 +125,20 @@ class Trainer(models.Model):
         blank=True,
         null=True,
     )
+    current_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0,
+    )
+    total_balance = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.0,
+    )
     languages = ArrayField(
         models.CharField(max_length=255),
         blank=True,
         default=list,
-    )
-    trainees = models.ManyToManyField(
-        Trainee,
-        related_name="trainees",
-        blank=True,
     )
     facebook_url = models.URLField(blank=True, null=True)
     instagram_url = models.URLField(blank=True, null=True)
@@ -143,15 +153,33 @@ class Trainer(models.Model):
     reviews = GenericRelation(Review, related_query_name="trainer_reviews")
 
     def save(self, *args, **kwargs):
-        # Generate a unique slug based on the trainer's username
         if not self.slug:
-            slug_str = "%s %s" % (self.user.username, self.user.id)
-            self.slug = slugify(slug_str)
+            slug_str = "%s#%s" % (
+                self.user.email[:8],
+                str(random.randint(1000, 9999)),
+            )
+            print("slug_str", slug_str)
+            self.slug = slug_str.replace(" ", "-").lower()
 
         super(Trainer, self).save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.user.username} Trainer"
+
+
+class Transformations(models.Model):
+    file = models.FileField(upload_to="transformations/", blank=True)
+    details = models.TextField(blank=True)
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name="trainer_transformations",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.trainee.user.username}'s Transformation"
 
 
 class Program(models.Model):
@@ -174,7 +202,7 @@ class Program(models.Model):
         max_length=255,
         blank=True,
     )
-    method = models.CharField(
+    type = models.CharField(
         max_length=255,
         blank=True,
     )
@@ -182,6 +210,11 @@ class Program(models.Model):
         max_length=255,
         choices=GENDER_CHOICES,
         default="both",
+    )
+    sport_field = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
     )
     min_age = models.PositiveIntegerField(default=18)
     max_age = models.PositiveIntegerField(default=99)
@@ -196,7 +229,7 @@ class Program(models.Model):
         blank=True,
     )
     current_trainees_count = models.PositiveIntegerField(default=0)
-    max_trainees_count = models.PositiveIntegerField(null=True, blank=True)
+    program_capacity = models.PositiveIntegerField(null=True, blank=True)
     # Add GenericRelation to link Program to reviews
     avg_ratings = models.FloatField(
         validators=[MinValueValidator(1.0), MaxValueValidator(5.0)],
@@ -221,11 +254,15 @@ class ProgramPlan(models.Model):
         decimal_places=2,
         default=0.0,
     )
+    is_offer = models.BooleanField(default=False)
     offer_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
+    )
+    current_trainees_count = models.PositiveIntegerField(
+        default=0,
     )
     max_trainees = models.DecimalField(
         max_digits=10,
@@ -277,19 +314,20 @@ class Workout(models.Model):
         decimal_places=2,
         default=0.0,
     )
+    is_offer = models.BooleanField(default=False)
     offer_price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
     )
-    current_trainees_count = models.PositiveIntegerField(default=0)
-    max_trainees_count = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
+    num_complete_videos = models.PositiveIntegerField(default=0)
+    sport_field = models.CharField(
+        max_length=255,
         blank=True,
+        null=True,
     )
+    current_trainees_count = models.PositiveIntegerField(default=0)
     trainer = models.ForeignKey(
         Trainer,
         on_delete=models.CASCADE,
@@ -301,7 +339,7 @@ class Workout(models.Model):
         blank=True,
     )
     duration_in_minutes = models.PositiveIntegerField(default=0)
-    number_of_files = models.PositiveIntegerField(default=0)
+    number_of_videos = models.PositiveIntegerField(default=0)
     # Add GenericRelation to link Workout to reviews
     avg_ratings = models.FloatField(
         validators=[MinValueValidator(1.0), MaxValueValidator(5.0)],
@@ -325,6 +363,7 @@ class WorkoutFile(models.Model):
         null=True,
         blank=True,
     )
+    video_duration = models.PositiveIntegerField(default=0)
     title = models.CharField(max_length=255)
     details = models.TextField(
         null=True,
@@ -333,7 +372,7 @@ class WorkoutFile(models.Model):
     workout = models.ForeignKey(
         Workout,
         on_delete=models.CASCADE,
-        related_name="workout_videos_files",
+        related_name="workout_files",
         null=True,
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -363,6 +402,8 @@ class Session(models.Model):
     update_pref_lifestyle = models.BooleanField(default=False)
     attach_body_img = models.BooleanField(default=False)
     attach_med_report = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.trainer.user.username}'s Session Settings"
@@ -382,7 +423,7 @@ class Package(models.Model):
     ]
 
     session_type = models.CharField(max_length=255, choices=SESSION_CHOICES)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     price = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -393,6 +434,9 @@ class Package(models.Model):
         on_delete=models.CASCADE,
         related_name="session_packages",
     )
+
+    class Meta:
+        unique_together = ("session_type", "session")
 
 
 class Availability(models.Model):
@@ -408,12 +452,15 @@ class Availability(models.Model):
 
     day = models.CharField(max_length=255, choices=DAY_CHOICES)
     is_active = models.BooleanField(default=False)
-    availablity = models.OneToOneField(
+    session = models.ForeignKey(
         Session,
         on_delete=models.CASCADE,
         related_name="trainer_avilablity",
         null=True,
     )
+
+    class Meta:
+        unique_together = ("day", "session")
 
     def __str__(self):
         return f"{self.get_day_display()} - Active: {self.is_active}"
@@ -422,8 +469,73 @@ class Availability(models.Model):
 class Time(models.Model):
     from_time = models.TimeField()
     to_time = models.TimeField()
-    day = models.ForeignKey(
+    availability = models.ForeignKey(
         Availability,
         on_delete=models.CASCADE,
-        related_name="session_times",
+        related_name="availability_times",
     )
+
+
+class Payment(models.Model):
+    PAYMENT_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+    ]
+    trainee = models.ForeignKey(
+        Trainee,
+        on_delete=models.CASCADE,
+        related_name="trainee_payments",
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    currency = models.CharField(max_length=255, default="EGP")
+    method = models.CharField(max_length=255, blank=True)
+    status = models.CharField(
+        max_length=255,
+        choices=PAYMENT_STATUS_CHOICES,
+        default="pending",
+    )
+    transaction_id = models.CharField(max_length=255, null=True, blank=True)
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    content_object = GenericForeignKey("content_type", "object_id")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.transaction_id} - {self.status}"
+
+
+class ClientRequest(models.Model):
+    CLIENT_REQUEST_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("accepted", "Accepted"),
+        ("rejected", "Rejected"),
+        ("cancelled", "Cancelled"),
+    ]
+    trainee = models.ForeignKey(
+        Trainee,
+        on_delete=models.CASCADE,
+        related_name="trainee_requests",
+    )
+    program_plan = models.ForeignKey(
+        ProgramPlan,
+        on_delete=models.CASCADE,
+        related_name="program_requests",
+    )
+    message = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=255,
+        choices=CLIENT_REQUEST_STATUS_CHOICES,
+        default="pending",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.trainee.user.username} - {self.program_plan.program.title}"

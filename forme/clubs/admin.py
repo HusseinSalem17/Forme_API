@@ -180,18 +180,18 @@ class NewTrainerAdmin(admin.ModelAdmin):
 @admin.register(BranchTrainer)
 class BranchTrainerAdmin(admin.ModelAdmin):
     list_display = [
-        "id",
         "trainer",
+        "branch",
         "created_at",
     ]
     search_fields = [
         "id",
         "trainer",
-        "subscription",
+        "subscriptions",
     ]
     list_filter = [
         "trainer",
-        "subscription",
+        "subscriptions",
         "created_at",
     ]
 
@@ -199,7 +199,6 @@ class BranchTrainerAdmin(admin.ModelAdmin):
 @admin.register(BranchMember)
 class BranchMemberAdmin(admin.ModelAdmin):
     list_display = [
-        "id",
         "trainee",
         "created_at",
         "updated_at",
@@ -219,7 +218,6 @@ class MemberSubscriptionAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "member",
-        "subscription",
         "subscription_plan",
         "start_date",
         "end_date",
@@ -252,10 +250,8 @@ class BranchAdmin(admin.ModelAdmin):
     search_fields = [
         "id",
         "name",
-        "address",
     ]
     list_filter = [
-        "address",
         "club__property_name",
         "created_at",
     ]
@@ -365,7 +361,7 @@ class FacilitiesAdmin(admin.ModelAdmin):
 class BranchGalleryAdmin(admin.ModelAdmin):
     list_display = [
         "id",
-        "galleries",
+        "gallery",
         "branch",
     ]
     search_fields = [
