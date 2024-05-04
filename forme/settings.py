@@ -27,7 +27,7 @@ if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]  # <-- Updated!
 
 
-ALLOWED_HOSTS = ["127.0.0.1"]
+ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3"]
 
 
 # Application definition
@@ -193,9 +193,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_ROOT = os.path.join(BASE_DIR, "/static")
+STATIC_ROOT = "media/hussein/H.salem/fci_2020/computer_programming/Graduation_Project/Forme_API/static/"
 STATIC_URL = "/static/"
-STATICFILES_DIR = [os.path.join(BASE_DIR, "forme/static")]
+STATICFILES_DIR = [os.path.join(BASE_DIR, "/static")]
 # Default primary key field types
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
@@ -223,4 +223,3 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": timedelta(days=1),
     },
 }
-
