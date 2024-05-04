@@ -28,7 +28,7 @@ if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]  # <-- Updated!
 
 
-ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3"]
+ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3","forme-app-7pffc.ondigitalocean.app"]
 
 
 # Application definition
