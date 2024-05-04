@@ -196,6 +196,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 STATIC_ROOT = "media/hussein/H.salem/fci_2020/computer_programming/Graduation_Project/Forme_API/static/"
 STATIC_URL = "/static/"
 STATICFILES_DIR = [os.path.join(BASE_DIR, "/static")]
+
 # Default primary key field types
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
