@@ -18,11 +18,11 @@ environ.Env.read_env(BASE_DIR / ".env")  # <-- Updated!
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # SECRET_KEY = env("SECRET_KEY")  # <-- Updated!
-SECRET_KEY ="django-insecure-jv3b&ixles^8cm-(af_$0m@_)y)79ew6gdm$5i4u^#)yh=wm$k"
+SECRET_KEY = "django-insecure-jv3b&ixles^8cm-(af_$0m@_)y)79ew6gdm$5i4u^#)yh=wm$k"
 # SECRET_KEY = "django-insecure-jv3b&ixles^8cm-(af_$0m@_)y)79ew6gdm$5i4u^#)yh=wm$k"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")  # <-- Updated!
+DEBUG = "True"  # <-- Updated!
 
 if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]  # <-- Updated!
@@ -95,12 +95,12 @@ CORS_ORIGIN_WHITELIST = [
 # Database Configuration
 DATABASES = {
     "default": {
-        "ENGINE": env("DB_ENGINE"),
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": "demo",
+        "USER": "postgres",
+        "PASSWORD": "test123",
+        "HOST": "localhost",
+        "PORT": "5432",
     }
 }
 # Password validation
@@ -151,7 +151,7 @@ SIMPLE_JWT = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_URL"),
+        "LOCATION": "redis://localhost:6379/",
         "KEY_PREFIX": "imdb",
         "TIMEOUT": 60 * 15,  # in seconds: 60 * 15 (15 minutes)
         "OPTIONS": {
@@ -165,7 +165,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("REDIS_URL")],
+            "hosts": ["redis://localhost:6379/"],
         },
     },
 }
