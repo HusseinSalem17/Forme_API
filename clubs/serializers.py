@@ -1218,7 +1218,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
         members = BranchMember.objects.filter(branch=obj)
         return BranchMemberSerializer(members, many=True).data
 
-    def get_branch_facilities(self, obj):
+    def get_facilities(self, obj):
         facilities = Facilities.objects.filter(branch=obj)
         return FacilitiesSerializer(facilities, many=True).data
 
