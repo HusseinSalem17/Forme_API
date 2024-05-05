@@ -1077,6 +1077,8 @@ class BranchMemberSerializer(serializers.ModelSerializer):
 
     def get_attendance(self, obj):
         attendance = Attendance.objects.filter(branch_member=obj)
+        if not attendance:
+            return None
         return AttendancesSerializer(attendance, many=True).data
 
 
@@ -1165,7 +1167,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     owner = CustomUserSerializer()
     location = serializers.SerializerMethodField()
     new_trainers = serializers.SerializerMethodField()
-    members = serializers.SerializerMethodField()
+    # members = serializers.SerializerMethodField()
     working_hours = serializers.SerializerMethodField()
     subscriptions = serializers.SerializerMethodField()
     facilities = serializers.SerializerMethodField()
@@ -1216,9 +1218,9 @@ class BranchDetailSerializer(serializers.ModelSerializer):
         subscriptions = Subscription.objects.filter(branch=obj)
         return SubscriptionSerializer(subscriptions, many=True).data
 
-    def get_members(self, obj):
-        members = BranchMember.objects.filter(branch=obj)
-        return BranchMemberSerializer(members, many=True).data
+    # def get_members(self, obj):
+    #     members = BranchMember.objects.filter(branch=obj)
+    #     return BranchMemberSerializer(members, many=True).data
 
     def get_facilities(self, obj):
         facilities = Facilities.objects.filter(branch=obj)
