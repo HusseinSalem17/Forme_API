@@ -1,11 +1,9 @@
 # views.py
 from django.shortcuts import get_object_or_404
 
-from forme.utils import RedisCache
 from trainings.models import Trainee, Trainer
 from trainings.serializers import TraineeSerializer, TrainerSerializer
 
-from .renderers import UserRenderer
 from rest_framework import status
 
 from rest_framework.response import Response
@@ -36,7 +34,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.generics import GenericAPIView
 from django_redis import get_redis_connection
 
-cache = RedisCache(get_redis_connection("default"), ttl=600)
+# cache = RedisCache(get_redis_connection("default"), ttl=600)
 
 
 # for Compelete Profile Trainee Screen
@@ -666,8 +664,8 @@ class LocationView(GenericAPIView):
             serializer.save()
 
             # Save user data in Redis with a timeout of 10 minutes
-            cache_key = f"location_{user.id}"
-            cache.set(cache_key, serializer.data, ttl=600)
+            # cache_key = f"location_{user.id}"
+            # cache.set(cache_key, serializer.data, ttl=600)
 
             return Response(serializer.data, status=200)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -728,13 +726,13 @@ class LocationView(GenericAPIView):
         serializer = self.serializer_class(location)
 
         # Save user data in Redis with a timeout of 10 minutes
-        cache_key = f"location_{user.id}"
+        # cache_key = f"location_{user.id}"
 
-        if cache.__contains__(cache_key):
-            cached_data = cache.get(cache_key)
-            return Response(cached_data, status=status.HTTP_200_OK)
+        # if cache.__contains__(cache_key):
+        #     cached_data = cache.get(cache_key)
+        #     return Response(cached_data, status=status.HTTP_200_OK)
 
-        cache.set(cache_key, serializer.data)
+        # cache.set(cache_key, serializer.data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 

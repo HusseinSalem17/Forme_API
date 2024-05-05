@@ -161,27 +161,27 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=365),  # Set to 1 year
 }
 
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://localhost:6379/",
-        "KEY_PREFIX": "imdb",
-        "TIMEOUT": 60 * 15,  # in seconds: 60 * 15 (15 minutes)
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-    }
-}
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": "redis://localhost:6379/",
+#         "KEY_PREFIX": "imdb",
+#         "TIMEOUT": 60 * 15,  # in seconds: 60 * 15 (15 minutes)
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         },
+#     }
+# }
 
 # Optionally, you can configure Django Channels to use Redis as well
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": ["redis://localhost:6379/"],
-        },
-    },
-}
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {
+#             "hosts": ["redis://localhost:6379/"],
+#         },
+#     },
+# }
 
 # Optionally, you can configure Django Sessions to use Redis
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
