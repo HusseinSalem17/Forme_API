@@ -184,7 +184,7 @@ class TraineeSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer()
     programs = serializers.SerializerMethodField()
     workouts = serializers.SerializerMethodField()
-    reviews = ReviewsDetailSerializer(many=True)
+    # reviews = ReviewsDetailSerializer(many=True)
 
     class Meta:
         model = Trainee
@@ -194,7 +194,7 @@ class TraineeSerializer(serializers.ModelSerializer):
             "current_physical_level",
             "programs",
             "workouts",
-            "reviews",
+            # "reviews",
         ]
 
     def get_programs(self, obj):
@@ -205,9 +205,9 @@ class TraineeSerializer(serializers.ModelSerializer):
         workouts = Workout.objects.filter(trainees=obj)
         return WorkoutListSerializer(workouts, many=True).data
 
-    def get_reviews(self, obj):
-        reviews = Review.objects.filter(trainee=obj)
-        return ReviewsDetailSerializer(reviews, many=True).data
+    # def get_reviews(self, obj):
+    #     reviews = Review.objects.filter(trainee=obj)
+    #     return ReviewsDetailSerializer(reviews, many=True).data
 
 
 class TransformationAddSerializer(serializers.ModelSerializer):
