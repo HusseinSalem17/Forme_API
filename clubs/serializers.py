@@ -1071,6 +1071,8 @@ class BranchMemberSerializer(serializers.ModelSerializer):
 
     def get_member_subscription(self, obj):
         member_subscription = MemberSubscription.objects.filter(member=obj)
+        if not member_subscription:
+            return None
         return MemberSubscriptionSerializer(member_subscription, many=True).data
 
     def get_attendance(self, obj):
