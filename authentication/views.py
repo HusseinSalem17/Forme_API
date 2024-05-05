@@ -46,7 +46,7 @@ class CompleteProfileTraineeView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="For Complete Profile Trainee",
-        tags=["Profile"],
+        tags=["profile"],
         operation_id="Complete Profile Trainee",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -126,7 +126,7 @@ class CompleteProfileTrainerView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="For Complete Profile Trainee",
-        tags=["Profile"],
+        tags=["profile"],
         operation_id="Complete Profile Trainer",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -222,6 +222,7 @@ class ForgetPasswordView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="For Forget Password Screen Then verify OTP Screen then set new password request",
+        tags=["auth","Trainee App"],
         request_body=ForgetPasswordSerializer,
         responses={
             200: openapi.Response(
@@ -745,7 +746,7 @@ class UpdateProfilePictureView(GenericAPIView):
     @swagger_auto_schema(
         operation_description="Update Profile Picture",
         request_body=UploadProfilePictureSerializer,
-        tags=["Profile"],
+        tags=["profile"],
         operation_id="update_profile_picture",
         responses={
             200: openapi.Response(
@@ -802,7 +803,7 @@ class UpdatePreferenceTraineeView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Update Preference for Trainee",
-        tags=["Profile"],
+        tags=["profile"],
         operation_id="update_preference_trainee",
         request_body=UpdatePreferenceTraineeSerializer,
         responses={
@@ -872,7 +873,7 @@ class UpdatePreferenceTrainerView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Update Preference for Trainer",
-        tags=["Profile"],
+        tags=["profile"],
         operation_id="update_preference_trainer",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -1293,7 +1294,7 @@ class VerifyOTPView(GenericAPIView):
 
 #     @swagger_auto_schema(
 #         operation_description="For Complete Profile",
-#         tags=["Profile"],
+#         tags=["profile"],
 #         operation_id="Complete Profile",
 #         request_body=openapi.Schema(
 #             type=openapi.TYPE_OBJECT,
@@ -1393,7 +1394,7 @@ class VerifyOTPView(GenericAPIView):
 
 #     @swagger_auto_schema(
 #         operation_description="Update Preference",
-#         tags=["Profile"],
+#         tags=["profile"],
 #         operation_id="update_preference",
 #         request_body=openapi.Schema(
 #             type=openapi.TYPE_OBJECT,
