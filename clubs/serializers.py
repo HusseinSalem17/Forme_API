@@ -1188,7 +1188,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
             "details",
             "trainers",
             "new_trainers",
-            "members",
+            # "members",
             "subscriptions",
             "total_members",
             "new_members",
