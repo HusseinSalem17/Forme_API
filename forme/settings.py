@@ -218,31 +218,30 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 TEMPLATES_BASE_URL = "http://127.0.0.1:8000"
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.sendgrid.net"
-Email_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "apikey"
-EMAIL_HOST_PASSWORD = "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"
-DEFAULT_FROM_EMAIL = "husseinsalem910@gmail.com"
-DEFAULT_HOST_PASSWORD = "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"
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST = "smtp.sendgrid.net"
+# Email_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST_USER = "apikey"
+# EMAIL_HOST_PASSWORD = "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"
+# DEFAULT_FROM_EMAIL = "husseinsalem910@gmail.com"
+# DEFAULT_HOST_PASSWORD = "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"
 
 
-SENDGRID_API_KEY = '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'
-SENDGRID_FROM_EMAIL = 'husseinsalem910@gmail.com'
+# SENDGRID_API_KEY = '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'
+# SENDGRID_FROM_EMAIL = 'husseinsalem910@gmail.com'
 
 #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
 
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"
-# Email_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "salemhussein49@gmail.com"
-# EMAIL_HOST_PASSWORD = "qtcd vzge nqex joph"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+Email_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "salemhussein49@gmail.com"
+EMAIL_HOST_PASSWORD = "qtcd vzge nqex joph"
 
 CORS_ALLOWED_ORIGINS = [
-    "http://10.0.2.2:8000",
-    "http://127.0.0.1:8000",
+    "*",
 ]
 
 
