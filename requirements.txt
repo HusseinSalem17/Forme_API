@@ -33,7 +33,7 @@ oauthlib
 packaging
 pillow
 proto-plus
-protobuf=
+protobuf
 psycopg2-binary
 pyasn1
 pyasn1_modules
