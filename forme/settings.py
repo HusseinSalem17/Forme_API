@@ -241,7 +241,10 @@ SENDGRID_FROM_EMAIL = 'husseinsalem910@gmail.com'
 # EMAIL_HOST_PASSWORD = "qtcd vzge nqex joph"
 
 CORS_ALLOWED_ORIGINS = [
-    "*",
+    "http://10.0.2.2:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://localhost:3001",
 ]
 
 
