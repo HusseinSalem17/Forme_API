@@ -92,7 +92,6 @@ class ClubAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "property_name",
-        "documents",
         "club_website",
         "club_registration_number",
         "sport_field",
