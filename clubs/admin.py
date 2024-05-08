@@ -8,6 +8,7 @@ from .models import (
     Club,
     BranchGallery,
     ContactUs,
+    Document,
     Facilities,
     MemberSubscription,
     Subscription,
@@ -18,8 +19,10 @@ from .models import (
 )
 from django.contrib.auth.models import Group
 
+from ckeditor.widgets import CKEditorWidget
+from django.db import models
+from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 
-# Register your models here.
 
 
 # @admin.register(Owner)
@@ -86,13 +89,29 @@ from django.contrib.auth.models import Group
 #     get_phone.short_description = "Phone"
 #     get_group.short_description = "Group"
 
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "document",
+        "club",
+        "created_at",
+    ]
+    search_fields = [
+        "id",
+        "club",
+    ]
+    list_filter = [
+        "club",
+        "created_at",
+    ]
+
 
 @admin.register(Club)
-class ClubAdmin(admin.ModelAdmin):
+class ClubAdmin(admin.ModelAdmin,DynamicArrayMixin):
     list_display = [
         "id",
         "property_name",
-        "documents",
         "club_website",
         "club_registration_number",
         "sport_field",
@@ -106,6 +125,7 @@ class ClubAdmin(admin.ModelAdmin):
     list_filter = [
         "created_at",
     ]
+
 
 
 @admin.register(Subscription)

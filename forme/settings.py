@@ -28,7 +28,7 @@ if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]  # <-- Updated!
 
 
-ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3","forme-app-7pffc.ondigitalocean.app"]
+ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3", "forme-app-7pffc.ondigitalocean.app"]
 
 
 # Application definition
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
+    "django_better_admin_arrayfield",
     "corsheaders",
     "drf_yasg",
     "authentication",
@@ -52,10 +53,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     "debug_toolbar.middleware.DebugToolbarMiddleware",  # <-- Updated!
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -223,15 +224,21 @@ EMAIL_HOST = "smtp.sendgrid.net"
 Email_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "apikey"
-EMAIL_HOST_PASSWORD = "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"
+EMAIL_HOST_PASSWORD = (
+    "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"
+)
 DEFAULT_FROM_EMAIL = "husseinsalem910@gmail.com"
-DEFAULT_HOST_PASSWORD = "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"
+DEFAULT_HOST_PASSWORD = (
+    "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"
+)
 
 
-SENDGRID_API_KEY = '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'
-SENDGRID_FROM_EMAIL = 'husseinsalem910@gmail.com'
+SENDGRID_API_KEY = (
+    "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"
+)
+SENDGRID_FROM_EMAIL = "husseinsalem910@gmail.com"
 
-#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
+# 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
 
 # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 # EMAIL_HOST = "smtp.gmail.com"
@@ -245,7 +252,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
     "http://localhost:3001",
+    "http://localhost:3000",
 ]
+
+CORS_ALLOW_CREDENTIALS = False
+
+CORS_ALLOW_METHODS = [ "DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT", ]
+
+CORS_ALLOW_HEADERS = [ "accept", "accept-encoding", "authorization", "content-type", "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with", ] 
 
 
 CELERY_BEAT_SCHEDULE = {

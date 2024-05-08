@@ -6,7 +6,10 @@ from authentication.utils import Util
 from trainings.models import Trainee, Trainer
 
 from .models import OTP, CustomUser, Location
-from drf_yasg.utils import swagger_auto_schema
+
+
+import base64
+from django.core.files.base import ContentFile
 
 
 # For Register Screen
@@ -469,6 +472,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 class CustomUserClubAddSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
+    profile_picture = serializers.CharField(required=False)
 
     class Meta:
         model = CustomUser
@@ -496,9 +500,7 @@ class CustomUserClubAddSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-
         if CustomUser.objects.filter(email=data.get("email")).exists():
-            print("reached here")
             raise serializers.ValidationError({"email": "Email is already in use."})
         if data.get("password") != data.get("confirm_password"):
             raise serializers.ValidationError({"password": "Passwords do not match."})
@@ -509,14 +511,20 @@ class CustomUserClubAddSerializer(serializers.ModelSerializer):
         if not data.get("username"):
             raise serializers.ValidationError({"username": "Username is required."})
         return data
-
+    
+    
     def create(self, validated_data):
         if CustomUser.objects.filter(email=validated_data.get("email")).exists():
-            print("reached here")
             raise serializers.ValidationError({"email": "Email is already in use."})
-        validated_data.pop(
-            "confirm_password"
-        )  # Remove confirm_password before creating user
+
+        profile_picture_data = validated_data.get('profile_picture')
+        if profile_picture_data:
+            format, imgstr = profile_picture_data.split(';base64,') 
+            ext = format.split('/')[-1] 
+            data = ContentFile(base64.b64decode(imgstr), name='profile_picture.' + ext)
+            validated_data['profile_picture'] = data
+
+        validated_data.pop("confirm_password")  # Remove confirm_password before creating user
         user = CustomUser.objects.create_owner(**validated_data)
         return user
 

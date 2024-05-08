@@ -55,7 +55,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import IntegrityError
 
 from django.db.models import Min
@@ -293,80 +293,11 @@ class BranchLoginView(GenericAPIView):
 # for branch register (club)
 class BranchRegisterView(GenericAPIView):
     serializer_class = BranchAddSerializer
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     @swagger_auto_schema(
         operation_description="Register a new branch",
-        request_body=openapi.Schema(
-            tags=["clubs"],
-            operation_id="Branch Register",
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "owner": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "username": openapi.Schema(type=openapi.TYPE_STRING),
-                        "email": openapi.Schema(
-                            type=openapi.FORMAT_EMAIL,
-                            example="user@example.com",
-                        ),
-                        "password": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="eightcharactersatleast",
-                        ),
-                        "confirm_password": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="eightcharactersatleast",
-                        ),
-                        "profile_picture": openapi.Schema(
-                            type=openapi.TYPE_FILE,
-                            example="profile_picture.jpg",
-                        ),
-                        "date_of_birth": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            format="date",
-                            example="1990-01-01",
-                        ),
-                        "gender": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="male",
-                        ),
-                        "country": openapi.Schema(type=openapi.TYPE_STRING),
-                        "phone_number": openapi.Schema(type=openapi.TYPE_STRING),
-                    },
-                ),
-                "club": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "property_name": openapi.Schema(type=openapi.TYPE_STRING),
-                        "club_website": openapi.Schema(
-                            type=openapi.TYPE_STRING, exampl="www.example.com"
-                        ),
-                        "club_registration_number": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="123456",
-                        ),
-                        "documents": openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_FILE),
-                            example=["profile_picture.jpg", "document.pdf"],
-                        ),
-                        "sport_field": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="Football",
-                        ),
-                    },
-                ),
-                "address": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    example="123, ABC Street, XYZ City",
-                ),
-                "details": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    example="Details about the branch",
-                ),
-            },
-        ),
-        responses={
+        request_body=BranchAddSerializer,responses={
             200: BranchAddSerializer(),
             400: openapi.Schema(
                 type=openapi.TYPE_OBJECT,
@@ -381,7 +312,11 @@ class BranchRegisterView(GenericAPIView):
     )
     def post(self, request):
         try:
+            print("reached hereeee")
+            print("data", request.data)
+            print("file", request.FILES)
             serializer = self.get_serializer(data=request.data)
+            print("reacheed hererrer")
             serializer.is_valid(raise_exception=True)
 
             # create the owner, club, and branch
@@ -744,14 +679,21 @@ class BranchGalleriesView(GenericAPIView):
 # for branch gallery add (club)
 class BranchGalleryAddView(GenericAPIView):
     permission_classes = [IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
     authentication_classes = [JWTAuthentication]
     serializer_class = BranchGallerySerializer
 
     @swagger_auto_schema(
         tags=["clubs"],
         operation_description="Add a new gallery to the branch",
-        request_body=BranchGallerySerializer(),
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "gallery": openapi.Schema(
+                    type=openapi.TYPE_STRING, description="File path of the gallery"
+                )
+            },
+            required=["gallery"],
+        ),
         responses={
             200: BranchDetailSerializer(),
             400: openapi.Schema(
@@ -1644,6 +1586,7 @@ class BranchMemberJoinView(GenericAPIView):
             status=status.HTTP_201_CREATED,
         )
 
+
 # for branch same country (trainee)
 class ClubSameCountryView(GenericAPIView):
     serializer_class = ClubsListSerializer
@@ -1681,6 +1624,7 @@ class ClubSameCountryView(GenericAPIView):
 
         serializer = self.serializer_class(clubs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 # for branch Nearest to Farthest (trainee)
 class ClubNearestToFarthestView(GenericAPIView):
@@ -1830,7 +1774,6 @@ class ClubListView(GenericAPIView):
             )
 
 
-
 # for branch Ascending order of price (trainee)
 class ClubLowestToHighestPricebyView(GenericAPIView):
     serializer_class = ClubsListSerializer
@@ -1863,6 +1806,7 @@ class ClubLowestToHighestPricebyView(GenericAPIView):
 
         serializer = self.serializer_class(clubs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 # for member subscription delete (trainee)
 class MemberSubscriptionDeleteView(GenericAPIView):

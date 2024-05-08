@@ -1,11 +1,9 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
-from django.utils.text import slugify
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 from authentication.models import CustomUser
 from trainings.models import Program, Review, Trainee, Trainer
-from django.contrib.postgres.fields import ArrayField
 
 import random
 
@@ -14,10 +12,6 @@ class Club(models.Model):
     property_name = models.CharField(max_length=255)
     club_website = models.URLField(null=True, blank=True)
     club_registration_number = models.CharField(max_length=255, null=True, blank=True)
-    documents = ArrayField(
-        models.FileField(upload_to="club_documents/"),
-        default=list,
-    )
     country = models.CharField(max_length=255, null=True, blank=True)
     sport_field = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
@@ -25,6 +19,21 @@ class Club(models.Model):
 
     def __str__(self):
         return f"{self.property_name} Club"
+
+
+class Document(models.Model):
+    document = models.FileField(upload_to="documents/")
+    club = models.ForeignKey(
+        Club,
+        on_delete=models.CASCADE,
+        related_name="branch_documents",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.club.property_name
 
 
 class Subscription(models.Model):

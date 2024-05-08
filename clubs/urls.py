@@ -39,7 +39,7 @@ from .views import (
 
 urlpatterns = [
     path(
-        "branch-register/",
+        r"branch-register/",
         BranchRegisterView.as_view(),
         name="branch-register",
     ),

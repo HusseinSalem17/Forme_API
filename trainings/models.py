@@ -112,7 +112,7 @@ class Trainer(models.Model):
     )
     is_active = models.BooleanField(default=False)
     document_files = ArrayField(
-        models.FileField(upload_to="club_documents/"),
+        models.FileField(upload_to="trainer_documents/", blank=True),
         default=list,
     )
     id_card = models.FileField(upload_to="id_cards/", blank=True)

@@ -10,9 +10,12 @@ defer
 defusedxml
 distro-info
 Django
+django-better-admin-arrayfield
+django-ckeditor
 django-cors-headers
 django-debug-toolbar
 django-environ
+django-js-asset
 django-redis
 djangorestframework
 djangorestframework-simplejwt
@@ -32,6 +35,7 @@ louis
 oauthlib
 packaging
 pillow
+pip-autoremove
 proto-plus
 protobuf
 psycopg2-binary

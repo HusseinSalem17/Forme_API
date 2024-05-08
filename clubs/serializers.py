@@ -19,6 +19,7 @@ from .models import (
     Club,
     BranchGallery,
     ContactUs,
+    Document,
     Facilities,
     MemberSubscription,
     Subscription,
@@ -34,8 +35,25 @@ from django.db import transaction
 
 from .utils import calculate_end_date
 
+import base64
+from django.core.files.base import ContentFile
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    document = serializers.CharField()
+
+    class Meta:
+        model = Document
+        fields = [
+            "id",
+            "document",
+        ]
+        
+
 
 class ClubAddSerializer(serializers.ModelSerializer):
+    documents = DocumentSerializer(many=True, required=False)
+
     class Meta:
         model = Club
         fields = [
@@ -56,9 +74,6 @@ class ClubAddSerializer(serializers.ModelSerializer):
             "club_registration_number": {
                 "required": False,
             },
-            "documents": {
-                "required": False,
-            },
             "sport_field": {
                 "required": True,
             },
@@ -67,8 +82,18 @@ class ClubAddSerializer(serializers.ModelSerializer):
             },
         }
 
+    def create(self, validated_data):
+        club = Club.objects.create(**validated_data)
+        documents_files = self.context['request'].FILES.getlist('club.documents')
+        for doc_file in documents_files:
+            print('doc_file', doc_file)
+            Document.objects.create(club=club, document=doc_file)
+        return club
+
 
 class ClubUpdateSerializer(serializers.ModelSerializer):
+    documents = DocumentSerializer(many=True)
+
     class Meta:
         model = Club
         fields = [
@@ -95,6 +120,23 @@ class ClubUpdateSerializer(serializers.ModelSerializer):
                 "required": False,
             },
         }
+
+    def update(self, instance, validated_data):
+        documents_data = validated_data.pop("documents", [])
+        instance.property_name = validated_data.get(
+            "property_name", instance.property_name
+        )
+        instance.club_website = validated_data.get(
+            "club_website", instance.club_website
+        )
+        instance.club_registration_number = validated_data.get(
+            "club_registration_number", instance.club_registration_number
+        )
+        instance.sport_field = validated_data.get("sport_field", instance.sport_field)
+        instance.save()
+        for doc_data in documents_data:
+            Document.objects.create(club=instance, **doc_data)
+        return instance
 
 
 class TrainerExistingAddSerializer(serializers.ModelSerializer):
@@ -159,21 +201,12 @@ class BranchAddSerializer(serializers.ModelSerializer):
             },
         }
 
-    def validate(self, data):
-        # Ensure that 'owner' and 'club' are provided
-        if not data.get("owner"):
-            raise serializers.ValidationError("Owner is required.")
-        if not data.get("club"):
-            raise serializers.ValidationError("Club is required.")
-
-        return data
-
     def create(self, validated_data):
         owner_data = validated_data.pop("owner")
         club_data = validated_data.pop("club")
 
         owner_serializer = CustomUserClubAddSerializer(data=owner_data)
-        club_serializer = ClubAddSerializer(data=club_data)
+        club_serializer = ClubAddSerializer(data=club_data, context={'request': self.context['request']})
 
         if not owner_serializer.is_valid():
             raise serializers.ValidationError(owner_serializer.errors)
@@ -1140,7 +1173,8 @@ class AttendancesSerializer(serializers.ModelSerializer):
 
 
 class ClubDetailSerializer(serializers.ModelSerializer):
-    branches = serializers.SerializerMethodField()
+    # branches = serializers.SerializerMethodField()
+    # documents = DocumentSerializer(many=True)
 
     class Meta:
         model = Club
@@ -1150,16 +1184,20 @@ class ClubDetailSerializer(serializers.ModelSerializer):
             "club_website",
             "club_registration_number",
             "country",
-            "documents",
+            # "documents",
             "sport_field",
-            "branches",
+            # "branches",
             "created_at",
             "updated_at",
         ]
 
-    def get_branches(self, obj):
-        branches = Branch.objects.filter(club=obj)
-        return BranchListSerializer(branches, many=True).data
+    # def get_documents(self, obj):
+    #     documents = Document.objects.filter(club=obj)
+    #     return DocumentSerializer(documents, many=True).data
+
+    # def get_branches(self, obj):
+    #     branches = Branch.objects.filter(club=obj)
+    #     return BranchListSerializer(branches, many=True).data
 
 
 class BranchDetailSerializer(serializers.ModelSerializer):
@@ -1167,6 +1205,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     owner = CustomUserSerializer()
     location = serializers.SerializerMethodField()
     new_trainers = serializers.SerializerMethodField()
+    club = ClubDetailSerializer()
     # members = serializers.SerializerMethodField()
     working_hours = serializers.SerializerMethodField()
     subscriptions = serializers.SerializerMethodField()
@@ -1180,6 +1219,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
         model = Branch
         fields = [
             "id",
+            "club",
             "owner",
             "slug",
             "address",
@@ -1379,7 +1419,7 @@ class ClubsListSerializer(serializers.ModelSerializer):
             "club_website",
             "club_registration_number",
             "country",
-            "documents",
+            # "documents",
             "sport_field",
             "branches",
             "created_at",
