@@ -12,7 +12,7 @@ class Club(models.Model):
     property_name = models.CharField(max_length=255)
     club_website = models.URLField(null=True, blank=True)
     club_registration_number = models.CharField(max_length=255, null=True, blank=True)
-    country = models.CharField(max_length=255, null=True, blank=True)
+    country = models.CharField(max_length=255, null=True, blank=True, default="Egypt")
     sport_field = models.CharField(max_length=255, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
@@ -219,7 +219,6 @@ class BranchTrainer(models.Model):
 
 
 class BranchMember(models.Model):
-
     trainee = models.OneToOneField(
         Trainee,
         on_delete=models.CASCADE,

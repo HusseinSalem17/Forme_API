@@ -102,7 +102,7 @@ class CustomUser(AbstractUser):
         choices=GENDER_CHOICES,
         default="Male",
     )
-    country = models.CharField(max_length=255, null=True, blank=True)
+    country = models.CharField(max_length=255, null=True, blank=True, default="Egypt")
     phone_number = models.CharField(max_length=255, null=True, blank=True)
     auth_provider = models.CharField(
         max_length=255,
@@ -116,7 +116,7 @@ class CustomUser(AbstractUser):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["username"]
-    
+
     def tokens(self):
         refresh = RefreshToken.for_user(self)
         return {

@@ -48,7 +48,6 @@ class DocumentSerializer(serializers.ModelSerializer):
             "id",
             "document",
         ]
-        
 
 
 class ClubAddSerializer(serializers.ModelSerializer):
@@ -83,11 +82,13 @@ class ClubAddSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        print("reached here Noww")
         club = Club.objects.create(**validated_data)
-        documents_files = self.context['request'].FILES.getlist('club.documents')
-        for doc_file in documents_files:
-            print('doc_file', doc_file)
-            Document.objects.create(club=club, document=doc_file)
+        documents_files = self.context["request"].FILES.getlist("club.documents")
+        if documents_files:
+            for doc_file in documents_files:
+                print("doc_file", doc_file)
+                Document.objects.create(club=club, document=doc_file)
         return club
 
 
@@ -206,7 +207,9 @@ class BranchAddSerializer(serializers.ModelSerializer):
         club_data = validated_data.pop("club")
 
         owner_serializer = CustomUserClubAddSerializer(data=owner_data)
-        club_serializer = ClubAddSerializer(data=club_data, context={'request': self.context['request']})
+        club_serializer = ClubAddSerializer(
+            data=club_data, context={"request": self.context["request"]}
+        )
 
         if not owner_serializer.is_valid():
             raise serializers.ValidationError(owner_serializer.errors)
@@ -766,14 +769,14 @@ class MemberSubscriptionPostSerializer(serializers.ModelSerializer):
 
 
 class MemberSubscriptionSerializer(serializers.ModelSerializer):
-    subscription = serializers.SerializerMethodField()
+    # subscription = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberSubscription
         fields = [
             "id",
             "trainer",
-            "subscriptions",
+            # "subscriptions",
             "created_at",
             "updated_at",
         ]
@@ -791,18 +794,12 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "email": {
                 "required": True,
-                "allow_blank": False,
-                "allow_null": False,
             },
             "username": {
                 "required": True,
-                "allow_blank": False,
-                "allow_null": False,
             },
             "phone_number": {
                 "required": False,
-                "allow_blank": True,
-                "allow_null": True,
             },
             "subscriptions": {"required": False},
         }
@@ -843,7 +840,7 @@ class NewTrainerUpdateSerializer(serializers.ModelSerializer):
 
 
 class NewTrainerSerializer(serializers.ModelSerializer):
-    subscriptions = SubscriptionSummarySerializer(many=True)  # Add 'many=True' here
+    subscriptions = SubscriptionSummarySerializer(many=True)
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
@@ -1088,14 +1085,14 @@ class BranchMemberUpdateSerializer(serializers.ModelSerializer):
 
 
 class BranchMemberSerializer(serializers.ModelSerializer):
-    trainee = TraineeSerializer()
+    # trainee = TraineeSerializer()
     member_subscription = serializers.SerializerMethodField()
     attendance = serializers.SerializerMethodField()
 
     class Meta:
         model = BranchMember
         fields = [
-            "trainee",
+            # "trainee",
             "member_subscription",
             "attendance",
             "created_at",
@@ -1104,15 +1101,63 @@ class BranchMemberSerializer(serializers.ModelSerializer):
 
     def get_member_subscription(self, obj):
         member_subscription = MemberSubscription.objects.filter(member=obj)
-        if not member_subscription:
+        if not member_subscription.exists():
             return None
-        return MemberSubscriptionSerializer(member_subscription, many=True).data
+        # Explicitly convert queryset to list (should not be necessary but can be tried if issues persist)
+        return MemberSubscriptionSerializer(list(member_subscription), many=True).data
 
     def get_attendance(self, obj):
         attendance = Attendance.objects.filter(branch_member=obj)
         if not attendance:
             return None
         return AttendancesSerializer(attendance, many=True).data
+
+
+class AttendanceSerializerTemp(serializers.ModelSerializer):
+    class Meta:
+        model = Attendance
+        fields = ["date", "is_present"]
+
+
+class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
+    attendance = AttendanceSerializerTemp(many=True, read_only=True)
+
+    class Meta:
+        model = MemberSubscription
+        fields = [
+            "trainer",
+            "subscription_plan",
+            "state",
+            "start_date",
+            "end_date",
+            "attendance",
+        ]
+
+
+class ClubTraineeSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer()
+
+    class Meta:
+        model = Trainee
+        fields = [
+            "user",
+            "fitness_goals",
+            "current_physical_level",
+        ]
+
+
+class BranchMemberSerializerTemp(serializers.ModelSerializer):
+    trainee = ClubTraineeSerializer()
+    member_subscription = MemberSubscriptionSerializerTemp(many=True)
+
+    class Meta:
+        model = BranchMember
+        fields = [
+            "trainee",
+            "member_subscription",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class BranchMemberPostSerializer(serializers.ModelSerializer):
@@ -1206,7 +1251,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     location = serializers.SerializerMethodField()
     new_trainers = serializers.SerializerMethodField()
     club = ClubDetailSerializer()
-    # members = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()
     working_hours = serializers.SerializerMethodField()
     subscriptions = serializers.SerializerMethodField()
     facilities = serializers.SerializerMethodField()
@@ -1228,7 +1273,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
             "details",
             "trainers",
             "new_trainers",
-            # "members",
+            "members",
             "subscriptions",
             "total_members",
             "new_members",
@@ -1258,9 +1303,9 @@ class BranchDetailSerializer(serializers.ModelSerializer):
         subscriptions = Subscription.objects.filter(branch=obj)
         return SubscriptionSerializer(subscriptions, many=True).data
 
-    # def get_members(self, obj):
-    #     members = BranchMember.objects.filter(branch=obj)
-    #     return BranchMemberSerializer(members, many=True).data
+    def get_members(self, obj):
+        members = BranchMember.objects.filter(branch=obj)
+        return BranchMemberSerializerTemp(members, many=True).data
 
     def get_facilities(self, obj):
         facilities = Facilities.objects.filter(branch=obj)
