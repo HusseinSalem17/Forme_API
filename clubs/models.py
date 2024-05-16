@@ -115,10 +115,6 @@ class NewTrainer(models.Model):
         null=True,
         blank=True,
     )
-    profile_picture = models.ImageField(
-        upload_to="profile_pics/",
-        default="profile_pics/default.png",
-    )
     username = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=255, blank=True, null=True)
     subscriptions = models.ManyToManyField(

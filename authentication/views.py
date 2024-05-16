@@ -899,12 +899,12 @@ class UpdatePreferenceTrainerView(GenericAPIView):
                     description="ID card",
                     example="id_card.jpg",
                 ),
-                "document_files": openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    description="Document files",
-                    items=openapi.Items(type=openapi.TYPE_FILE),
-                    example=["document1.jpg", "document2.jpg"],
-                ),
+                # "document_files": openapi.Schema(
+                #     type=openapi.TYPE_ARRAY,
+                #     description="Document files",
+                #     items=openapi.Items(type=openapi.TYPE_FILE),
+                #     example=["document1.jpg", "document2.jpg"],
+                # ),
                 "facebook_url": openapi.Schema(
                     type=openapi.FORMAT_URI,
                     description="Facebook URL",

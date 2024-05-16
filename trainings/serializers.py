@@ -286,7 +286,6 @@ class TrainerSerializer(serializers.ModelSerializer):
             "slug",
             "bio",
             "sport_field",
-            "document_files",
             "id_card",
             "background_image",
             "number_of_trainees",
@@ -1361,7 +1360,6 @@ class TrainerUpdateSerializer(serializers.ModelSerializer):
             "user",
             "bio",
             "sport_field",
-            "document_files",
             "id_card",
             "exp_injuries",
             "physical_disabilities",
@@ -1375,7 +1373,6 @@ class TrainerUpdateSerializer(serializers.ModelSerializer):
             "user": {"required": False},
             "bio": {"required": False},
             "sport_field": {"required": False},
-            "document_files": {"required": False},
             "id_card": {"required": False},
             "exp_injuries": {"required": False},
             "physical_disabilities": {"required": False},
@@ -1398,9 +1395,6 @@ class TrainerUpdateSerializer(serializers.ModelSerializer):
             instance.bio = validated_data.get("bio", instance.bio)
             instance.sport_field = validated_data.get(
                 "sport_field", instance.sport_field
-            )
-            instance.document_files = validated_data.get(
-                "document_files", instance.document_files
             )
             instance.id_card = validated_data.get("id_card", instance.id_card)
             instance.exp_injuries = validated_data.get(
