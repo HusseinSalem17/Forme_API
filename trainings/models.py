@@ -111,10 +111,6 @@ class Trainer(models.Model):
         blank=True,
     )
     is_active = models.BooleanField(default=False)
-    document_files = ArrayField(
-        models.FileField(upload_to="trainer_documents/", blank=True),
-        default=list,
-    )
     id_card = models.FileField(upload_to="id_cards/", blank=True)
     background_image = models.ImageField(upload_to="background_images/", blank=True)
     number_of_trainees = models.PositiveIntegerField(default=0)
