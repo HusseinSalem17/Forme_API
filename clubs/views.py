@@ -1001,11 +1001,11 @@ class NewTrainerDeleteView(GenericAPIView):
             ),
         ],
     )
-    def delete(self, request, id):
+    def delete(self, request, trainer_id):
         try:
             owner = request.user
             branch = Branch.objects.filter(owner=owner).first()
-            trainer = NewTrainer.objects.get(id=id)
+            trainer = NewTrainer.objects.get(id=trainer_id)
             if trainer.branch == branch:
                 trainer.delete()
                 return Response(

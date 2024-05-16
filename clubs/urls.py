@@ -114,7 +114,7 @@ urlpatterns = [
         name="new-trainer-update",
     ),
     path(
-        "new-trainer-delete/",
+        "new-trainer-delete/<int:trainer_id>/",
         NewTrainerDeleteView.as_view(),
         name="new-trainer-delete",
     ),
