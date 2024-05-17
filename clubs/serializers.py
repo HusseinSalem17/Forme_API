@@ -7,7 +7,6 @@ from authentication.serializers import (
 )
 from trainings.models import Program, Trainee, Trainer, Workout
 from trainings.serializers import (
-    TraineeSerializer,
     TrainerListSerializer,
     ReviewsDetailSerializer,
 )
@@ -783,11 +782,14 @@ class MemberSubscriptionSerializer(serializers.ModelSerializer):
 
 
 class NewTrainerAddSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.CharField(required=False)
+
     class Meta:
         model = NewTrainer
         fields = [
             "email",
             "username",
+            "profile_picture",
             "phone_number",
             "subscriptions",
         ]
@@ -813,13 +815,25 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
 
         return data
 
+    def create(self, validated_data):
+        profile_picture = validated_data.pop("profile_picture", None)
+        if profile_picture:
+            format, imgstr = profile_picture.split(";base64,")
+            ext = format.split("/")[-1]
+            data = ContentFile(base64.b64decode(imgstr), name=f"{validated_data['username']}.{ext}")
+            validated_data["profile_picture"] = data
+        new_trainer = NewTrainer.objects.create(**validated_data)
+        return new_trainer
+
 
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):
+    profile_picture = serializers.CharField(required=False)
     class Meta:
         model = NewTrainer
         fields = [
             "email",
             "username",
+            "profile_picture",
             "phone_number",
             "subscriptions",
         ]
@@ -837,6 +851,19 @@ class NewTrainerUpdateSerializer(serializers.ModelSerializer):
                 "required": False,
             },
         }
+        
+    def update(self, instance, validated_data):
+        profile_picture = validated_data.pop("profile_picture", None)
+        if profile_picture:
+            format, imgstr = profile_picture.split(";base64,")
+            ext = format.split("/")[-1]
+            data = ContentFile(base64.b64decode(imgstr), name=f"{instance.username}.{ext}")
+            instance.profile_picture = data
+        instance.email = validated_data.get("email", instance.email)
+        instance.username = validated_data.get("username", instance.username)
+        instance.phone_number = validated_data.get("phone_number", instance.phone_number)
+        instance.save()
+        return instance
 
 
 class NewTrainerSerializer(serializers.ModelSerializer):
@@ -851,7 +878,9 @@ class NewTrainerSerializer(serializers.ModelSerializer):
             "username",
             "subscriptions",
             "email",
+            "profile_picture",
             "phone_number",
+            "members_count",
             "created_at",
             "updated_at",
         ]
@@ -873,6 +902,7 @@ class TraineeNewTrainerSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "phone_number",
+            "profile_picture",
             "created_at",
             "updated_at",
         ]

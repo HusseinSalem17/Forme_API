@@ -1,5 +1,4 @@
 from authentication.models import CustomUser
-from authentication.serializers import LogoutSerializer
 
 from .utils import handle_validation_error
 from trainings.serializers import (

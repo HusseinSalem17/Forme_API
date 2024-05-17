@@ -30,18 +30,13 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs.get("email", None)
-        password = attrs.get("password", None)
         user_type = attrs.get("user_type", None)
-        if user_type not in ["trainer", "trainee", "new_trainer"]:
-            raise serializers.ValidationError("Invalid user type")
-        if CustomUser.objects.filter(email=email).exists() and CustomUser.objects.get(
-            email=email
-        ).check_group(
-            user_type,
-        ):
-            raise serializers.ValidationError(
-                f"Email is already in use for this {user_type}"
-            )
+        if CustomUser.objects.filter(email=email).exists():
+            print("reached hereeee Now")
+            if CustomUser.objects.get(email=email).check_group(user_type):
+                raise serializers.ValidationError(
+                    f"Email is already in use for this {user_type}"
+                )
 
         return attrs
 
@@ -50,8 +45,11 @@ class RegisterSerializer(serializers.Serializer):
         password = validated_data.pop("password", None)
         user_type = validated_data.pop("user_type", None)
         if user_type == "trainer":
+            print("reached here now")
             if CustomUser.objects.filter(email=email).exists():
-                if not CustomUser.objects.get(email=email).check_group("trainers"):
+                if not CustomUser.objects.get(email=email).check_group("trainer"):
+                    print("reached now")
+                    print("reached")
                     user = CustomUser.objects.get(email=email)
                     user.join_group("trainers")
                     Trainer.objects.create(user=user).save()
@@ -68,7 +66,7 @@ class RegisterSerializer(serializers.Serializer):
             return user
         elif user_type == "trainee":
             if CustomUser.objects.filter(email=email).exists():
-                if not CustomUser.objects.get(email=email).check_group("trainees"):
+                if not CustomUser.objects.get(email=email).check_group("trainee"):
                     user = CustomUser.objects.get(email=email)
                     user.join_group("trainees")
                     Trainee.objects.create(user=user).save()
@@ -509,20 +507,21 @@ class CustomUserClubAddSerializer(serializers.ModelSerializer):
         if not data.get("username"):
             raise serializers.ValidationError({"username": "Username is required."})
         return data
-    
-    
+
     def create(self, validated_data):
         if CustomUser.objects.filter(email=validated_data.get("email")).exists():
             raise serializers.ValidationError({"email": "Email is already in use."})
 
-        profile_picture_data = validated_data.get('profile_picture')
+        profile_picture_data = validated_data.get("profile_picture")
         if profile_picture_data:
-            format, imgstr = profile_picture_data.split(';base64,') 
-            ext = format.split('/')[-1] 
-            data = ContentFile(base64.b64decode(imgstr), name='profile_picture.' + ext)
-            validated_data['profile_picture'] = data
+            format, imgstr = profile_picture_data.split(";base64,")
+            ext = format.split("/")[-1]
+            data = ContentFile(base64.b64decode(imgstr), name="profile_picture." + ext)
+            validated_data["profile_picture"] = data
 
-        validated_data.pop("confirm_password")  # Remove confirm_password before creating user
+        validated_data.pop(
+            "confirm_password"
+        )  # Remove confirm_password before creating user
         user = CustomUser.objects.create_owner(**validated_data)
         return user
 

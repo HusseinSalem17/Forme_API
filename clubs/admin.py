@@ -24,7 +24,6 @@ from django.db import models
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 
 
-
 # @admin.register(Owner)
 # class OwnerAdmin(admin.ModelAdmin):
 #     list_display = [
@@ -89,6 +88,7 @@ from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 #     get_phone.short_description = "Phone"
 #     get_group.short_description = "Group"
 
+
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
     list_display = [
@@ -108,7 +108,7 @@ class DocumentAdmin(admin.ModelAdmin):
 
 
 @admin.register(Club)
-class ClubAdmin(admin.ModelAdmin,DynamicArrayMixin):
+class ClubAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = [
         "id",
         "property_name",
@@ -125,7 +125,6 @@ class ClubAdmin(admin.ModelAdmin,DynamicArrayMixin):
     list_filter = [
         "created_at",
     ]
-
 
 
 @admin.register(Subscription)
@@ -184,6 +183,8 @@ class NewTrainerAdmin(admin.ModelAdmin):
         "username",
         "branch",
         "email",
+        "profile_picture",
+        "members_count",
         "phone_number",
         "members_count",
     ]

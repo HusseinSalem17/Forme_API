@@ -1,3 +1,4 @@
+import os
 from django.core.mail import EmailMessage
 
 
@@ -81,6 +82,8 @@ class Util:
             return False
         return True
 
+
+
     # def send_otp(email):
     #     """
     #     Send OTP to the user's email
@@ -135,7 +138,6 @@ class Util:
     #         status=200,
     #     )
 
-
     def send_otp(email):
         """
         Send OTP to the user's email
@@ -178,7 +180,7 @@ class Util:
             from_email=settings.SENDGRID_FROM_EMAIL,
             to_emails=to_email,
             subject=subject,
-            html_content=message
+            html_content=message,
         )
 
         try:
@@ -195,9 +197,6 @@ class Util:
             },
             status=200,
         )
-
-
-
 
 
 # def custom_exception_handler(exc, context):

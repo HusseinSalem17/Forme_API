@@ -1,11 +1,20 @@
+import os
 from django.db import models
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 from authentication.models import CustomUser
+from clubs.utils import get_file_path
 from trainings.models import Program, Review, Trainee, Trainer
 
 import random
+
+def get_upload_path(instance, filename):
+    # Define the folder and name dynamically, for example:
+    folder = "profile_pics"
+    name = instance.username  # Using the trainer's username as a folder name
+    # Call get_file_path with the folder, name, and filename
+    return get_file_path(folder, name, filename)
 
 
 class Club(models.Model):
@@ -115,6 +124,11 @@ class NewTrainer(models.Model):
         null=True,
         blank=True,
     )
+    profile_picture = models.ImageField(
+        upload_to=get_upload_path,  # Use a new function that calls get_file_path
+        default="profile_pics/default.png",
+    )
+    members_count = models.PositiveIntegerField(default=0)
     username = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=255, blank=True, null=True)
     subscriptions = models.ManyToManyField(
@@ -122,7 +136,6 @@ class NewTrainer(models.Model):
         related_name="branch_new_trainer_subscription",
         blank=True,
     )
-    members_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 

@@ -126,10 +126,13 @@ class CustomUser(AbstractUser):
 
     def check_group(self, group_name):
         group_name = str(group_name + "s")
-        return self.groups.filter(name=group_name).exists()
+        print('group_name Now', group_name)
+        t=self.groups.filter(name=group_name).exists()
+        print('t', t)
+        return t
 
     def join_group(self, group_name):
-        group = Group.objects.get(name=group_name)
+        group, created = Group.objects.get_or_create(name=group_name)
         self.groups.add(group)
         self.save()
 
