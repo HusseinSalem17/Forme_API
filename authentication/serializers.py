@@ -346,13 +346,11 @@ class CompleteProfileTrainerSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             user = request.user
+        if not user.is_trainer():
+            raise serializers.ValidationError("User is not a trainer")
         sport_field = attrs.get("sport_field", "")
         if user.is_trainer() and not sport_field:
             raise serializers.ValidationError("Sport field is required for trainers")
-        if user.is_trainee() and sport_field:
-            raise serializers.ValidationError(
-                "Sport field is not required for trainees"
-            )
         return attrs
 
     def update(self, instance, validated_data):

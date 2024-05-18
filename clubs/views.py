@@ -856,6 +856,20 @@ class NewTrainerAddView(GenericAPIView):
 
     @swagger_auto_schema(
         tags=["clubs"],
+        request_body = openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "email": openapi.Schema(type=openapi.TYPE_STRING),
+                "username": openapi.Schema(type=openapi.TYPE_STRING),
+                "profile_picture": openapi.Schema(type=openapi.FORMAT_BASE64),
+                "phone_number": openapi.Schema(type=openapi.TYPE_STRING),
+                "subscriptions": openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                ),
+            },
+            required=["email", "username"],
+        ),
         responses={
             200: NewTrainerSerializer(),
             400: openapi.Schema(

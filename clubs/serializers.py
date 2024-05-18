@@ -36,6 +36,7 @@ from .utils import calculate_end_date
 
 import base64
 from django.core.files.base import ContentFile
+from drf_extra_fields.fields import Base64ImageField
 
 
 class DocumentAddSerializer(serializers.ModelSerializer):
@@ -782,7 +783,7 @@ class MemberSubscriptionSerializer(serializers.ModelSerializer):
 
 
 class NewTrainerAddSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.CharField(required=False)
+    profile_picture = Base64ImageField(required=False)
 
     class Meta:
         model = NewTrainer
@@ -812,20 +813,7 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Email is required.")
         if not data.get("username"):
             raise serializers.ValidationError("Username is required.")
-
         return data
-
-    def create(self, validated_data):
-        profile_picture = validated_data.pop("profile_picture", None)
-        if profile_picture:
-            format, imgstr = profile_picture.split(";base64,")
-            ext = format.split("/")[-1]
-            data = ContentFile(
-                base64.b64decode(imgstr), name=f"{validated_data['username']}.{ext}"
-            )
-            validated_data["profile_picture"] = data
-        new_trainer = NewTrainer.objects.create(**validated_data)
-        return new_trainer
 
 
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):
