@@ -1,10 +1,11 @@
 from django.shortcuts import get_object_or_404
 
+from clubs.utils import handle_validation_error
 from trainings.models import Trainee, Trainer
 from trainings.serializers import TraineeSerializer, TrainerSerializer
 
 from rest_framework import status
-
+from rest_framework import serializers
 from rest_framework.response import Response
 from .models import OTP, CustomUser, Location
 from .serializers import (
@@ -323,7 +324,7 @@ class LogoutAPIView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="For Logout",
-        tags=["auth","clubs"],
+        tags=["auth", "clubs"],
         request_body=LogoutSerializer,
         responses={
             200: openapi.Response(
@@ -864,7 +865,6 @@ class UpdatePreferenceTraineeView(GenericAPIView):
 
 # for update preference Trainer screen
 class UpdatePreferenceTrainerView(GenericAPIView):
-
     serializer_class = UpdatePreferenceTrainerSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -875,53 +875,57 @@ class UpdatePreferenceTrainerView(GenericAPIView):
         operation_id="update_preference_trainer",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            description="Trainer",
             properties={
-                "bio": openapi.Schema(type=openapi.TYPE_STRING, description="Bio"),
+                "bio": openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="Bio"
+                ),
                 "exp_injuries": openapi.Schema(
                     type=openapi.TYPE_BOOLEAN,
-                    description="Experience in injuries",
-                    example=True,
+                    description="Experience in injuries"
                 ),
                 "physical_disabilities": openapi.Schema(
                     type=openapi.TYPE_BOOLEAN,
-                    description="Physical disabilities",
-                    example=True,
+                    description="Physical disabilities"
+                ),
+                "id_card": openapi.Schema(
+                    type=openapi.FORMAT_BASE64,
+                    description="Profile picture",
+                    example="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAALCAYAAAB8sKbRAAAACXBIWXMAAA7EAAAOxAGVKw4bAAABaElEQVQ4jZ2Tz0tDQRTHv+9f7",
                 ),
                 "languages": openapi.Schema(
                     type=openapi.TYPE_ARRAY,
-                    items=openapi.Items(type=openapi.TYPE_STRING),
-                    description="Languages",
-                    example=["English", "Arabic"],
+                    items=openapi.Schema(
+                        type=openapi.TYPE_STRING
+                    ),
+                    description="Languages"
                 ),
-                "id_card": openapi.Schema(
-                    type=openapi.TYPE_FILE,
-                    description="ID card",
-                    example="id_card.jpg",
+                "documents": openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            "document": openapi.Schema(
+                                type=openapi.TYPE_FILE,
+                                description="Document"
+                            )
+                        }
+                    ),
+                    description="Documents"
                 ),
-                # "document_files": openapi.Schema(
-                #     type=openapi.TYPE_ARRAY,
-                #     description="Document files",
-                #     items=openapi.Items(type=openapi.TYPE_FILE),
-                #     example=["document1.jpg", "document2.jpg"],
-                # ),
                 "facebook_url": openapi.Schema(
-                    type=openapi.FORMAT_URI,
-                    description="Facebook URL",
-                    example="https://www.facebook.com/",
+                    type=openapi.TYPE_STRING,
+                    description="Facebook URL"
                 ),
                 "instagram_url": openapi.Schema(
-                    type=openapi.FORMAT_URI,
-                    description="Instagram URL",
-                    example="https://www.instagram.com/",
+                    type=openapi.TYPE_STRING,
+                    description="Instagram URL"
                 ),
                 "youtube_url": openapi.Schema(
-                    type=openapi.FORMAT_URI,
-                    description="Youtube URL",
-                    example="https://www.youtube.com/",
-                ),
-            },
-            required=["exp_injuries", "physical_disabilities"],
+                    type=openapi.TYPE_STRING,
+                    description="YouTube URL"
+                )
+            }
         ),
         responses={
             200: openapi.Response(
@@ -963,6 +967,7 @@ class UpdatePreferenceTrainerView(GenericAPIView):
         ],
     )
     def put(self, request):
+        print('files here', request.FILES)
         user = request.user
         if not user.is_trainer:
             return Response({"message": "You are not a trainer"}, status=400)
@@ -981,7 +986,6 @@ class UpdatePreferenceTrainerView(GenericAPIView):
 
 # for register screen
 class RegisterView(GenericAPIView):
-
     serializer_class = RegisterSerializer
 
     @swagger_auto_schema(
@@ -1021,21 +1025,25 @@ class RegisterView(GenericAPIView):
         },
     )
     def post(self, request):
-        if not Util.check_otp_verified(request.data["email"]):
-            return Response({"message": "Please verify your OTP first"}, status=400)
-
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            if user:
-                refresh = RefreshToken.for_user(user)
-                return Response(
-                    {
-                        "access": str(refresh.access_token),
-                        "refresh": str(refresh),
-                    }
-                )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            serializer = self.serializer_class(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                if user:
+                    refresh = RefreshToken.for_user(user)
+                    return Response(
+                        {
+                            "access": str(refresh.access_token),
+                            "refresh": str(refresh),
+                        }
+                    )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 # for verify otp screen

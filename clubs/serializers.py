@@ -38,19 +38,18 @@ import base64
 from django.core.files.base import ContentFile
 
 
-class DocumentSerializer(serializers.ModelSerializer):
+class DocumentAddSerializer(serializers.ModelSerializer):
     document = serializers.CharField()
 
     class Meta:
         model = Document
         fields = [
-            "id",
             "document",
         ]
 
 
 class ClubAddSerializer(serializers.ModelSerializer):
-    documents = DocumentSerializer(many=True, required=False)
+    documents = DocumentAddSerializer(many=True, required=False)
 
     class Meta:
         model = Club
@@ -83,6 +82,7 @@ class ClubAddSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         print("reached here Noww")
         club = Club.objects.create(**validated_data)
+        club_content_type = ContentType.objects.get_for_model(club)
         documents_files = self.context["request"].FILES.getlist("club.documents")
         if documents_files:
             for doc_file in documents_files:
@@ -92,7 +92,7 @@ class ClubAddSerializer(serializers.ModelSerializer):
 
 
 class ClubUpdateSerializer(serializers.ModelSerializer):
-    documents = DocumentSerializer(many=True)
+    documents = DocumentAddSerializer(many=True)
 
     class Meta:
         model = Club
@@ -820,7 +820,9 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
         if profile_picture:
             format, imgstr = profile_picture.split(";base64,")
             ext = format.split("/")[-1]
-            data = ContentFile(base64.b64decode(imgstr), name=f"{validated_data['username']}.{ext}")
+            data = ContentFile(
+                base64.b64decode(imgstr), name=f"{validated_data['username']}.{ext}"
+            )
             validated_data["profile_picture"] = data
         new_trainer = NewTrainer.objects.create(**validated_data)
         return new_trainer
@@ -828,6 +830,7 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
 
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):
     profile_picture = serializers.CharField(required=False)
+
     class Meta:
         model = NewTrainer
         fields = [
@@ -851,17 +854,21 @@ class NewTrainerUpdateSerializer(serializers.ModelSerializer):
                 "required": False,
             },
         }
-        
+
     def update(self, instance, validated_data):
         profile_picture = validated_data.pop("profile_picture", None)
         if profile_picture:
             format, imgstr = profile_picture.split(";base64,")
             ext = format.split("/")[-1]
-            data = ContentFile(base64.b64decode(imgstr), name=f"{instance.username}.{ext}")
+            data = ContentFile(
+                base64.b64decode(imgstr), name=f"{instance.username}.{ext}"
+            )
             instance.profile_picture = data
         instance.email = validated_data.get("email", instance.email)
         instance.username = validated_data.get("username", instance.username)
-        instance.phone_number = validated_data.get("phone_number", instance.phone_number)
+        instance.phone_number = validated_data.get(
+            "phone_number", instance.phone_number
+        )
         instance.save()
         return instance
 

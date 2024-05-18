@@ -6,6 +6,7 @@ from clubs.models import Club, TraineeWishList
 from .models import (
     Availability,
     ClientRequest,
+    Document,
     Package,
     Payment,
     Program,
@@ -22,6 +23,9 @@ from .models import (
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+
+
+
 
 
 class WorkoutListSerializer(serializers.ModelSerializer):
@@ -1560,3 +1564,4 @@ class ReviewUpdateSerializer(serializers.ModelSerializer):
         instance.comment = validated_data.get("comment", instance.comment)
         instance.save()
         return instance
+

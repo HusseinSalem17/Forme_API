@@ -11,6 +11,8 @@ from django.contrib.postgres.fields import ArrayField
 
 import random
 
+from clubs.utils import get_file_path
+
 
 class Trainee(models.Model):
     user = models.OneToOneField(
@@ -111,7 +113,7 @@ class Trainer(models.Model):
         blank=True,
     )
     is_active = models.BooleanField(default=False)
-    id_card = models.FileField(upload_to="id_cards/", blank=True)
+    id_card = models.ImageField(upload_to="id_cards/", blank=True)
     background_image = models.ImageField(upload_to="background_images/", blank=True)
     number_of_trainees = models.PositiveIntegerField(default=0)
     exp_injuries = models.BooleanField(default=False)
@@ -535,3 +537,24 @@ class ClientRequest(models.Model):
 
     def __str__(self):
         return f"{self.trainee.user.username} - {self.program_plan.program.title}"
+
+
+def get_upload_path(instance, filename):
+    folder = "documents"
+    email = instance.trainer.user.email
+    return get_file_path(folder, email, filename)
+
+
+class Document(models.Model):
+    document = models.FileField(
+        upload_to=get_upload_path,
+    )
+    trainer = models.ForeignKey(
+        Trainer,
+        on_delete=models.CASCADE,
+        related_name="trainer_documents",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.trainer.user.username}'s Document"

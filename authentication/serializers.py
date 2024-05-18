@@ -3,11 +3,11 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from authentication.utils import Util
-from trainings.models import Trainee, Trainer
+from trainings.models import Document, Trainee, Trainer
 
 from .models import OTP, CustomUser, Location
 
-
+from drf_extra_fields.fields import Base64ImageField
 import base64
 from django.core.files.base import ContentFile
 
@@ -31,6 +31,8 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get("email", None)
         user_type = attrs.get("user_type", None)
+        if not Util.check_otp_verified(email) or not Util.check_otp_validality(email):
+            raise serializers.ValidationError("OTP is not verified or expired")
         if CustomUser.objects.filter(email=email).exists():
             print("reached hereeee Now")
             if CustomUser.objects.get(email=email).check_group(user_type):
@@ -422,8 +424,21 @@ class UpdatePreferenceTraineeSerializer(serializers.ModelSerializer):
         return instance
 
 
+class DocumentTrainerSerializer(serializers.ModelSerializer):
+    document = serializers.CharField()
+
+    class Meta:
+        model = Document
+        fields = [
+            "document",
+        ]
+
+
 # for update preference trainer
 class UpdatePreferenceTrainerSerializer(serializers.ModelSerializer):
+    documents = DocumentTrainerSerializer(many=True, required=False)
+    id_card = Base64ImageField(required=False)
+
     class Meta:
         model = Trainer
         fields = [
@@ -432,6 +447,7 @@ class UpdatePreferenceTrainerSerializer(serializers.ModelSerializer):
             "physical_disabilities",
             "languages",
             "id_card",
+            "documents",
             "facebook_url",
             "instagram_url",
             "youtube_url",
@@ -446,6 +462,35 @@ class UpdatePreferenceTrainerSerializer(serializers.ModelSerializer):
             "instagram_url": {"required": False},
             "youtube_url": {"required": False},
         }
+
+    def update(self, instance, validated_data):
+        instance.bio = validated_data.get("bio", instance.bio)
+        instance.exp_injuries = validated_data.get(
+            "exp_injuries", instance.exp_injuries
+        )
+        instance.physical_disabilities = validated_data.get(
+            "physical_disabilities", instance.physical_disabilities
+        )
+        instance.languages = validated_data.get("languages", instance.languages)
+        instance.id_card = validated_data.get("id_card", instance.id_card)
+        instance.facebook_url = validated_data.get(
+            "facebook_url", instance.facebook_url
+        )
+        instance.instagram_url = validated_data.get(
+            "instagram_url", instance.instagram_url
+        )
+        instance.youtube_url = validated_data.get("youtube_url", instance.youtube_url)
+
+        documents_files = self.context["request"].FILES.getlist("documents")
+        if documents_files:
+            for document in documents_files:
+                print("fileshere")
+                Document.objects.create(
+                    document=document,
+                    trainer=instance,
+                )
+        instance.save()
+        return instance
 
 
 class CustomUserSerializer(serializers.ModelSerializer):

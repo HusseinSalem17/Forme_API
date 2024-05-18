@@ -1,9 +1,10 @@
-from email.headerregistry import Group
 from django.contrib import admin
+
 
 from .models import (
     Availability,
     ClientRequest,
+    Document,
     Package,
     Payment,
     Program,
@@ -313,6 +314,7 @@ class PaymentAdmin(admin.ModelAdmin):
         "created_at",
     ]
 
+
 @admin.register(ClientRequest)
 class ClientRequestAdmin(admin.ModelAdmin):
     list_display = [
@@ -329,4 +331,16 @@ class ClientRequestAdmin(admin.ModelAdmin):
     ]
     list_filter = [
         "created_at",
+    ]
+
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "document",
+        "created_at",
+    ]
+    search_fields = [
+        "document",
     ]
