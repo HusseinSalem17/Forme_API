@@ -160,7 +160,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
     def check_otp(self, email):
         if not Util.check_otp_validality(email):
             raise serializers.ValidationError("OTP is expired")
-        if Util.check_otp_verified(email):
+        if not Util.check_otp_verified(email):
             raise serializers.ValidationError("OTP is invalid")
 
     def validate(self, attrs):

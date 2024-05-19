@@ -238,7 +238,7 @@ class BranchMember(models.Model):
         related_name="trainee_membership",
         unique=True,
     )
-    branch = models.OneToOneField(
+    branch = models.ForeignKey(
         Branch,
         on_delete=models.CASCADE,
         related_name="branch_member",
