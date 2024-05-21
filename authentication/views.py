@@ -1083,8 +1083,10 @@ class VerifyOTPView(GenericAPIView):
         },
     )
     def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
+        try:
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)  # This will automatically raise an exception if not valid
+
             email = serializer.validated_data["email"]
             otp = serializer.validated_data["otp"]
             otp_obj = get_object_or_404(OTP, email=email, verified=False)
@@ -1094,9 +1096,11 @@ class VerifyOTPView(GenericAPIView):
                 return Response({"message": "otp verified successfully"}, status=200)
             else:
                 return Response({"message": "Incorrect otp"}, status=400)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # class RegisterView(GenericAPIView):
 #     @swagger_auto_schema(

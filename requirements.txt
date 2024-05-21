@@ -5,6 +5,7 @@ certifi
 cffi
 chardet
 charset-normalizer
+coverage
 cryptography
 defer
 defusedxml
