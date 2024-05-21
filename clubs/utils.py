@@ -20,19 +20,35 @@ def calculate_end_date(duration, start_date):
 
 
 def flatten_errors(errors):
-    flattened_errors = {}
+    flattened_errors = []
     non_field_errors = errors.pop("non_field_errors", None)
     for field, messages in errors.items():
         if isinstance(messages, dict):  # Check if the error is nested
             errors = {**errors, **messages}
             errors.pop(field)
             for key, value in messages.items():
-                flattened_errors[key] = " ".join(str(message) for message in value)
+                flattened_errors.append(" ".join(str(message) for message in value))
         else:
-            flattened_errors[field] = " ".join(str(message) for message in messages)
+            flattened_errors.append(" ".join(str(message) for message in messages))
     if non_field_errors is not None:
-        flattened_errors["non_field_errors"] = " ".join(non_field_errors)
-    return flattened_errors
+        flattened_errors.append(" ".join(non_field_errors))
+    return " ".join(flattened_errors)
+
+
+# def flatten_errors(errors):
+#     flattened_errors = {}
+#     non_field_errors = errors.pop("non_field_errors", None)
+#     for field, messages in errors.items():
+#         if isinstance(messages, dict):  # Check if the error is nested
+#             errors = {**errors, **messages}
+#             errors.pop(field)
+#             for key, value in messages.items():
+#                 flattened_errors[key] = " ".join(str(message) for message in value)
+#         else:
+#             flattened_errors[field] = " ".join(str(message) for message in messages)
+#     if non_field_errors is not None:
+#         flattened_errors["non_field_errors"] = " ".join(non_field_errors)
+#     return flattened_errors
 
 
 def handle_validation_error(e):
