@@ -1,6 +1,7 @@
 asgiref
 async-timeout
 cachetools
+coverage
 certifi
 cffi
 chardet
