@@ -21,7 +21,6 @@ djangorestframework
 djangorestframework-simplejwt
 drf-extra-fields
 drf-yasg
-duplicity
 filetype
 google-api-core
 google-api-python-client
