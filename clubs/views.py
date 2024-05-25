@@ -296,7 +296,8 @@ class BranchRegisterView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Register a new branch",
-        request_body=BranchAddSerializer,responses={
+        request_body=BranchAddSerializer,
+        responses={
             200: BranchAddSerializer(),
             400: openapi.Schema(
                 type=openapi.TYPE_OBJECT,
@@ -848,6 +849,70 @@ class BranchMembersView(GenericAPIView):
             )
 
 
+# to delete branch member
+class BranchMemberDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a member from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Member deleted successfully",
+                    ),
+                },
+                example={"message": "Member deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, member_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            member = BranchMember.objects.get(id=member_id)
+            if member.branch == branch:
+                member.delete()
+                return Response(
+                    {"message": "Member deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except BranchMember.DoesNotExist:
+            return Response(
+                {"error": "Member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 # for new trainer add (club)
 class NewTrainerAddView(GenericAPIView):
     serializer_class = NewTrainerAddSerializer
@@ -856,7 +921,7 @@ class NewTrainerAddView(GenericAPIView):
 
     @swagger_auto_schema(
         tags=["clubs"],
-        request_body = openapi.Schema(
+        request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
                 "email": openapi.Schema(type=openapi.TYPE_STRING),
@@ -896,6 +961,11 @@ class NewTrainerAddView(GenericAPIView):
     def post(self, request):
         try:
             owner = request.user
+            if not owner.is_owner:
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)

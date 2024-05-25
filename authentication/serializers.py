@@ -312,6 +312,7 @@ class CompleteProfileUserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             "username",
+            "date_of_birth",
             "phone_number",
             "gender",
             "profile_picture",
@@ -319,6 +320,7 @@ class CompleteProfileUserSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {
             "username": {"required": True},
+            "date_of_birth": {"required": True},
             "phone_number": {"required": False},
             "gender": {"required": True},
             "profile_picture": {"required": False},
@@ -355,6 +357,7 @@ class CompleteProfileTrainerSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop("user", {})
+        print("user_data birthdate", user_data)
         sport_field = validated_data.pop("sport_field", "")
         user = CustomUser.objects.get(id=instance.user.id)
         user_serializer = CompleteProfileUserSerializer(
