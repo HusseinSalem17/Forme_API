@@ -473,6 +473,7 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPlan
         fields = [
+            "id",
             "duration",
             "price",
             "is_offer",
@@ -1088,22 +1089,32 @@ class BranchMemberUpdateSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = BranchMember
+        model = MemberSubscription
         fields = [
             "subscription_plan",
             "trainer",
         ]
 
+    def validate_subscription_plan(self, value):
+        if not Subscription.objects.filter(id=value).exists():
+            raise serializers.ValidationError(
+                {"subscription_plan": "Subscription plan does not exist."}
+            )
+        return value
+
+    def validate_trainer(self, value):
+        if not BranchTrainer.objects.filter(id=value).exists():
+            raise serializers.ValidationError({"trainer": "Trainer does not exist."})
+        return value
+
     def update(self, instance, validated_data):
+        print('reached here 12')
         subscription_plan = validated_data.get("subscription_plan")
         trainer = validated_data.get("trainer")
         if subscription_plan:
-            subscription_plan = SubscriptionPlan.objects.get(id=subscription_plan)
-            subscription = Subscription.objects.get(
-                id=subscription_plan.subscription.id
-            )
+            subscription_plan = Subscription.objects.get(id=subscription_plan)
             trainer = BranchTrainer.objects.get(id=trainer)
-            instance.subscription_plan = subscription_plan
+            instance.subscription = subscription_plan
             instance.trainer = trainer
             instance.save()
         return instance
@@ -1143,20 +1154,37 @@ class AttendanceSerializerTemp(serializers.ModelSerializer):
         model = Attendance
         fields = ["date", "is_present"]
 
-
+class SubscriptionPlanMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "id",
+            "duration",
+            "price",
+            "is_offer",
+        ]
+        
 class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
     attendance = AttendanceSerializerTemp(many=True, read_only=True)
+    subscription_plan = SubscriptionPlanMemberSerializer()
+    subscription = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberSubscription
         fields = [
+            "id",
             "trainer",
             "subscription_plan",
+            "subscription",
             "state",
             "start_date",
             "end_date",
             "attendance",
         ]
+
+    def get_subscription(self, obj):
+        subscription = Subscription.objects.get(id=obj.subscription.id)
+        return SubscriptionSummarySerializer(subscription).data
 
 
 class ClubTraineeSerializer(serializers.ModelSerializer):
@@ -1178,6 +1206,7 @@ class BranchMemberSerializerTemp(serializers.ModelSerializer):
     class Meta:
         model = BranchMember
         fields = [
+            "id",
             "trainee",
             "member_subscription",
             "created_at",

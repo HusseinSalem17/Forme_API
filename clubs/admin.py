@@ -202,6 +202,7 @@ class NewTrainerAdmin(admin.ModelAdmin):
 @admin.register(BranchTrainer)
 class BranchTrainerAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "trainer",
         "branch",
         "created_at",
@@ -221,6 +222,7 @@ class BranchTrainerAdmin(admin.ModelAdmin):
 @admin.register(BranchMember)
 class BranchMemberAdmin(admin.ModelAdmin):
     list_display = [
+        "id",
         "trainee",
         "created_at",
         "updated_at",

@@ -22,6 +22,8 @@ from .serializers import (
     BranchTrainerSerializer,
     BranchUpdateSerializer,
     ClubsListSerializer,
+    MemberSubscriptionSerializer,
+    MemberSubscriptionSerializerTemp,
     NewTrainerAddSerializer,
     NewTrainerConvertSerializer,
     NewTrainerUpdateSerializer,
@@ -1953,7 +1955,7 @@ class MemberSubscriptionDeleteView(GenericAPIView):
 
 
 # for branch member update (trainee)
-class BranchMemberUpdateView(GenericAPIView):
+class TraineeBranchMemberUpdateView(GenericAPIView):
     serializer_class = BranchMemberUpdateSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -2000,6 +2002,71 @@ class BranchMemberUpdateView(GenericAPIView):
         branch_member = serializer.save()
         return Response(
             BranchMemberSerializer(branch_member).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+# for update branch member from branch (branch)
+class BranchMemberUpdateView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = BranchMemberUpdateSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Update the details of a branch member",
+        request_body=BranchMemberUpdateSerializer,
+        responses={
+            200: BranchMemberSerializer,
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def put(self, request, member_subscription_id):
+        owner = request.user
+        if not owner.is_owner:
+            return Response(
+                {"error": "You are not authorized to perform this action"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        print("reached here")
+        branch = Branch.objects.filter(owner=owner).first()
+        member_subscription = MemberSubscription.objects.get(id=member_subscription_id)
+        print("not reached here")
+        if not member_subscription.member.branch == branch:
+            return Response(
+                {"error": "Branch member not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = self.get_serializer(
+            member_subscription,
+            data=request.data,
+            partial=True,
+        )
+        print("reached here Now")
+        serializer.is_valid(raise_exception=True)
+        print("now here")
+        member_subscription = serializer.save()
+        print("reached here now")
+        return Response(
+            MemberSubscriptionSerializerTemp(member_subscription).data,
             status=status.HTTP_200_OK,
         )
 

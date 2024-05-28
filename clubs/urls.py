@@ -10,6 +10,7 @@ from .views import (
     BranchMemberDeleteView,
     BranchMemberJoinView,
     BranchMemberUpdateView,
+    TraineeBranchMemberUpdateView,
     BranchMembersCountView,
     BranchMembersView,
     BranchRegisterView,
@@ -210,7 +211,12 @@ urlpatterns = [
         name="branch-members-count",
     ),
     path(
-        "branch-member-update/<int:member_id>/",
+        "trainee-branch-member-update/<int:member_id>/",
+        TraineeBranchMemberUpdateView.as_view(),
+        name="trainee-branch-member-update",
+    ),
+    path(
+        "branch-member-update/<int:member_subscription_id>/",
         BranchMemberUpdateView.as_view(),
         name="branch-member-update",
     ),

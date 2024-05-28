@@ -9,6 +9,7 @@ from trainings.models import Program, Review, Trainee, Trainer
 
 import random
 
+
 def get_upload_path(instance, filename):
     # Define the folder and name dynamically, for example:
     folder = "profile_pics"
@@ -209,14 +210,13 @@ class BranchTrainer(models.Model):
         Trainer,
         on_delete=models.CASCADE,
         related_name="branch_trainer",
-        unique=True,
+        null=True,
     )
     branch = models.OneToOneField(
         Branch,
         on_delete=models.CASCADE,
         related_name="branch_trainer",
         null=True,
-        blank=True,
     )
     subscriptions = models.ManyToManyField(
         Subscription,
@@ -227,6 +227,9 @@ class BranchTrainer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
+    class Meta:
+        unique_together = ("trainer", "branch")
+
     def __str__(self):
         return f"{self.trainer}"
 
@@ -236,17 +239,19 @@ class BranchMember(models.Model):
         Trainee,
         on_delete=models.CASCADE,
         related_name="trainee_membership",
-        unique=True,
+        null=True,
     )
-    branch = models.ForeignKey(
+    branch = models.OneToOneField(
         Branch,
         on_delete=models.CASCADE,
         related_name="branch_member",
         null=True,
-        blank=True,
     )
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    class Meta:
+        unique_together = ("trainee", "branch")
 
     def __str__(self):
         return f"{self.trainee}"
@@ -276,6 +281,13 @@ class MemberSubscription(models.Model):
     )
     subscription_plan = models.OneToOneField(
         SubscriptionPlan,
+        on_delete=models.DO_NOTHING,
+        related_name="trainee_membership",
+        null=True,
+        blank=True,
+    )
+    subscription = models.OneToOneField(
+        Subscription,
         on_delete=models.DO_NOTHING,
         related_name="trainee_membership",
         null=True,
