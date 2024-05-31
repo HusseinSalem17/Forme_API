@@ -206,13 +206,13 @@ class Branch(models.Model):
 
 
 class BranchTrainer(models.Model):
-    trainer = models.OneToOneField(
+    trainer = models.ForeignKey(
         Trainer,
         on_delete=models.CASCADE,
         related_name="branch_trainer",
         null=True,
     )
-    branch = models.OneToOneField(
+    branch = models.ForeignKey(
         Branch,
         on_delete=models.CASCADE,
         related_name="branch_trainer",
@@ -235,13 +235,13 @@ class BranchTrainer(models.Model):
 
 
 class BranchMember(models.Model):
-    trainee = models.OneToOneField(
+    trainee = models.ForeignKey(
         Trainee,
         on_delete=models.CASCADE,
         related_name="trainee_membership",
         null=True,
     )
-    branch = models.OneToOneField(
+    branch = models.ForeignKey(
         Branch,
         on_delete=models.CASCADE,
         related_name="branch_member",
