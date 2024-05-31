@@ -227,8 +227,8 @@ class BranchTrainer(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
-    class Meta:
-        unique_together = ("trainer", "branch")
+    # class Meta:
+    #     unique_together = ("trainer", "branch")
 
     def __str__(self):
         return f"{self.trainer}"
@@ -250,8 +250,8 @@ class BranchMember(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
-    class Meta:
-        unique_together = ("trainee", "branch")
+    # class Meta:
+    #     unique_together = ("trainee", "branch")
 
     def __str__(self):
         return f"{self.trainee}"
