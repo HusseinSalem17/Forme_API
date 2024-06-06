@@ -850,6 +850,69 @@ class BranchMembersView(GenericAPIView):
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+# to delete member subscription
+class MemberSubscriptionDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a member subscription",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Member subscription deleted successfully",
+                    ),
+                },
+                example={"message": "Member subscription deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, subscription_id):
+        try:
+            owner = request.user
+            branch = Branch.objects.filter(owner=owner).first()
+            subscription = MemberSubscription.objects.get(id=subscription_id)
+            if subscription.branch == branch:
+                subscription.delete()
+                return Response(
+                    {"message": "Member subscription deleted successfully"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+        except MemberSubscription.DoesNotExist:
+            return Response(
+                {"error": "Member subscription not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 # to delete branch member
 class BranchMemberDeleteView(GenericAPIView):

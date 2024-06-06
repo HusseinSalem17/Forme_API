@@ -915,6 +915,7 @@ class BranchTrainerSerializer(serializers.ModelSerializer):
         fields = [
             "trainer",
             "subscriptions",
+            "members_count",
             "created_at",
             "updated_at",
         ]
