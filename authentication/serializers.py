@@ -35,7 +35,7 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("OTP is not verified or expired")
         if CustomUser.objects.filter(email=email).exists():
             print("reached hereeee Now")
-            if CustomUser.objects.get(email=email).check_group(user_type):
+            if CustomUser.objects.get(email=email).check_group(user_type + "s"):
                 raise serializers.ValidationError(
                     f"Email is already in use for this {user_type}"
                 )
@@ -154,7 +154,7 @@ class SetNewPasswordSerializer(serializers.Serializer):
     )
     new_password = serializers.CharField(
         required=True,
-        error_messages={"required": "Password is required."},
+        error_messages={"required": "New Password is required."},
     )
 
     def check_otp(self, email):
@@ -165,7 +165,6 @@ class SetNewPasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         email = attrs.get("email", None)
-        new_password = attrs.get("new_password", None)
         user = CustomUser.objects.filter(email=email).first()
         if user is None:
             raise serializers.ValidationError("User not found")
@@ -231,7 +230,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         old_password = attrs.get("old_password", None)
         user = self.context.get("request").user
         if not user.check_password(old_password):
-            raise serializers.ValidationError("Invalid old password")
+            raise serializers.ValidationError("Old password is incorrect")
         return attrs
 
 
@@ -287,11 +286,13 @@ class LocationSerializer(serializers.ModelSerializer):
         location = Location.objects.create(
             longitude=longitude, latitude=latitude, **validated_data
         )
+        print("reached here create")
         return location
 
     def update(self, instance, validated_data):
         instance.longitude = validated_data.get("longitude", instance.longitude)
         instance.latitude = validated_data.get("latitude", instance.latitude)
+        print("reach here update")
         instance.save()
         return instance
 
@@ -307,6 +308,17 @@ class UploadProfilePictureSerializer(serializers.Serializer):
 
 
 class CompleteProfileUserSerializer(serializers.ModelSerializer):
+    profile_picture = Base64ImageField(required=False)
+    gender = serializers.ChoiceField(
+        choices=[("male", "Male"), ("female", "Female")],
+        required=True,
+        error_messages={"required": "gender is required."},
+    )
+
+    def validate_gender(self, value):
+        if value not in dict(self.fields["gender"].choices):
+            raise serializers.ValidationError("Invalid choice for gender.")
+        return value
 
     class Meta:
         model = CustomUser
