@@ -291,6 +291,16 @@ class BranchGallerySerializer(serializers.ModelSerializer):
         ]
 
 
+class BranchGalleryAddSerializer(serializers.ModelSerializer):
+    gallery = Base64ImageField()
+
+    class Meta:
+        model = BranchGallery
+        fields = [
+            "gallery",
+        ]
+
+
 class FacilitiesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Facilities
@@ -480,6 +490,8 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "max_members",
             "expiration_date",
             "is_added",
+            "created_at",
+            # "updated_at",
         ]
 
 
@@ -511,6 +523,7 @@ class SubscriptionSummarySerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
+            "active",
             "created_at",
             "updated_at",
         ]
@@ -622,6 +635,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "title",
             "min_age",
             "max_age",
+            "active",
             "subscription_plans",
             "price",
             "max_members",
@@ -632,6 +646,9 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
                 "required": False,
             },
             "price": {
+                "required": False,
+            },
+            "active": {
                 "required": False,
             },
             "min_age": {
@@ -660,6 +677,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
 
             instance.title = validated_data.get("title", instance.title)
             instance.price = validated_data.get("price", instance.price)
+            instance.active = validated_data.get("active", instance.active)
             instance.min_age = validated_data.get("min_age", instance.min_age)
             instance.max_age = validated_data.get("max_age", instance.max_age)
             instance.max_members = validated_data.get(
@@ -680,6 +698,27 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             return instance
 
 
+class SubscriptionListSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "id",
+            "title",
+            "price",
+            "active",
+            "target_gender",
+            "min_age",
+            "max_age",
+            "is_completed",
+            "max_members",
+            "created_at",
+            "updated_at",
+        ]
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     subscription_plan = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
@@ -691,6 +730,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
+            "active",
+            "target_gender",
+            "min_age",
+            "max_age",
             "is_completed",
             "max_members",
             "subscription_plan",
@@ -913,6 +956,7 @@ class BranchTrainerSerializer(serializers.ModelSerializer):
     class Meta:
         model = BranchTrainer
         fields = [
+            "id",
             "trainer",
             "subscriptions",
             "members_count",
@@ -943,6 +987,7 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
+            "active",
             "price",
             "max_members",
         ]
@@ -951,6 +996,9 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
                 "required": False,
             },
             "price": {
+                "required": False,
+            },
+            "active": {
                 "required": False,
             },
             "max_members": {
@@ -1109,7 +1157,7 @@ class BranchMemberUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def update(self, instance, validated_data):
-        print('reached here 12')
+        print("reached here 12")
         subscription_plan = validated_data.get("subscription_plan")
         trainer = validated_data.get("trainer")
         if subscription_plan:
@@ -1155,6 +1203,7 @@ class AttendanceSerializerTemp(serializers.ModelSerializer):
         model = Attendance
         fields = ["date", "is_present"]
 
+
 class SubscriptionPlanMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = SubscriptionPlan
@@ -1164,7 +1213,8 @@ class SubscriptionPlanMemberSerializer(serializers.ModelSerializer):
             "price",
             "is_offer",
         ]
-        
+
+
 class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
     attendance = AttendanceSerializerTemp(many=True, read_only=True)
     subscription_plan = SubscriptionPlanMemberSerializer()
