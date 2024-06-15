@@ -635,7 +635,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "title",
             "min_age",
             "max_age",
-            "active",
+            # "active",
             "subscription_plans",
             "price",
             "max_members",
@@ -648,9 +648,9 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "price": {
                 "required": False,
             },
-            "active": {
-                "required": False,
-            },
+            # "active": {
+            #     "required": False,
+            # },
             "min_age": {
                 "required": False,
             },
