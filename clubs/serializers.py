@@ -987,7 +987,7 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
-            "active",
+            # "active",
             "price",
             "max_members",
         ]
@@ -998,9 +998,9 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
             "price": {
                 "required": False,
             },
-            "active": {
-                "required": False,
-            },
+            # "active": {
+            #     "required": False,
+            # },
             "max_members": {
                 "required": False,
             },
