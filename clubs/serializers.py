@@ -291,14 +291,14 @@ class BranchGallerySerializer(serializers.ModelSerializer):
         ]
 
 
-class BranchGalleryAddSerializer(serializers.ModelSerializer):
-    gallery = Base64ImageField()
+# class BranchGalleryAddSerializer(serializers.ModelSerializer):
+#     gallery = Base64ImageField()
 
-    class Meta:
-        model = BranchGallery
-        fields = [
-            "gallery",
-        ]
+#     class Meta:
+#         model = BranchGallery
+#         fields = [
+#             "gallery",
+#         ]
 
 
 class FacilitiesSerializer(serializers.ModelSerializer):
@@ -698,25 +698,25 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             return instance
 
 
-class SubscriptionListSerializer(serializers.ModelSerializer):
-    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
-    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+# class SubscriptionListSerializer(serializers.ModelSerializer):
+#     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+#     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
-    class Meta:
-        model = Subscription
-        fields = [
-            "id",
-            "title",
-            "price",
-            "active",
-            "target_gender",
-            "min_age",
-            "max_age",
-            "is_completed",
-            "max_members",
-            "created_at",
-            "updated_at",
-        ]
+#     class Meta:
+#         model = Subscription
+#         fields = [
+#             "id",
+#             "title",
+#             "price",
+#             "active",
+#             "target_gender",
+#             "min_age",
+#             "max_age",
+#             "is_completed",
+#             "max_members",
+#             "created_at",
+#             "updated_at",
+#         ]
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -730,7 +730,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
-            "active",
+            # "active",
             "target_gender",
             "min_age",
             "max_age",
