@@ -523,7 +523,7 @@ class SubscriptionSummarySerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
-            "active",
+            # "active",
             "created_at",
             "updated_at",
         ]
