@@ -677,7 +677,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
 
             instance.title = validated_data.get("title", instance.title)
             instance.price = validated_data.get("price", instance.price)
-            instance.active = validated_data.get("active", instance.active)
+            # instance.active = validated_data.get("active", instance.active)
             instance.min_age = validated_data.get("min_age", instance.min_age)
             instance.max_age = validated_data.get("max_age", instance.max_age)
             instance.max_members = validated_data.get(
