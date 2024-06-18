@@ -291,14 +291,14 @@ class BranchGallerySerializer(serializers.ModelSerializer):
         ]
 
 
-# class BranchGalleryAddSerializer(serializers.ModelSerializer):
-#     gallery = Base64ImageField()
+class BranchGalleryAddSerializer(serializers.ModelSerializer):
+    gallery = Base64ImageField()
 
-#     class Meta:
-#         model = BranchGallery
-#         fields = [
-#             "gallery",
-#         ]
+    class Meta:
+        model = BranchGallery
+        fields = [
+            "gallery",
+        ]
 
 
 class FacilitiesSerializer(serializers.ModelSerializer):
