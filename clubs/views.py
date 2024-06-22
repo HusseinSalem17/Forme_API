@@ -1,6 +1,6 @@
 from authentication.models import CustomUser
 
-from .utils import handle_validation_error
+from forme.utils import handle_validation_error
 from trainings.serializers import (
     PaymentAddSerializer,
     PaymentSerializer,
@@ -12,6 +12,7 @@ from .serializers import (
     AttendanceUpdateSerializer,
     BranchAddSerializer,
     BranchDetailSerializer,
+    BranchGalleryAddSerializer,
     BranchGallerySerializer,
     BranchListSerializer,
     BranchLoginSerializer,
@@ -57,7 +58,6 @@ from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db import IntegrityError
 
 from django.db.models import Min
 
@@ -162,7 +162,7 @@ class BranchDeleteView(GenericAPIView):
     def delete(self, request):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -215,12 +215,18 @@ class BranchDetailView(GenericAPIView):
     def get(self, request):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
+                print("hereee now")
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            branch = Branch.objects.get(owner=owner)
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             serializer = self.get_serializer(branch)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except serializers.ValidationError as e:
@@ -275,14 +281,13 @@ class BranchLoginView(GenericAPIView):
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             user = CustomUser.objects.get(email=serializer.validated_data["email"])
-            refresh = RefreshToken.for_user(user)
+            tokens = user.tokens()
             return Response(
                 {
-                    "access": str(refresh.access_token),
-                    "refresh": str(refresh),
+                    "access": str(tokens["access"]),
+                    "refresh": str(tokens["refresh"]),
                 }
             )
-
         except serializers.ValidationError as e:
             return handle_validation_error(e)
         except Exception as e:
@@ -314,11 +319,8 @@ class BranchRegisterView(GenericAPIView):
     )
     def post(self, request):
         try:
-            print("reached hereeee")
-            print("data", request.data)
-            print("file", request.FILES)
+
             serializer = self.get_serializer(data=request.data)
-            print("reacheed hererrer")
             serializer.is_valid(raise_exception=True)
 
             # create the owner, club, and branch
@@ -331,11 +333,6 @@ class BranchRegisterView(GenericAPIView):
 
         except serializers.ValidationError as e:
             return handle_validation_error(e)
-        except IntegrityError:
-            return Response(
-                {"error": "User with this email already exists"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
         except Exception as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -350,71 +347,8 @@ class BranchUpdateView(GenericAPIView):
 
     @swagger_auto_schema(
         operation_description="Update the branch details",
-        request_body=openapi.Schema(
-            tags=["clubs"],
-            operation_id="Branch Update",
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "owner": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "username": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="username",
-                        ),
-                        "date_of_birth": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            format="date",
-                            example="1990-01-01",
-                        ),
-                        "profile_picture": openapi.Schema(
-                            type=openapi.TYPE_FILE,
-                            example="profile_picture.jpg",
-                        ),
-                        "gender": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="male",
-                        ),
-                        "country": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="India",
-                        ),
-                        "phone_number": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="1234567890",
-                        ),
-                    },
-                ),
-                "club": openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        "property_name": openapi.Schema(
-                            type=openapi.TYPE_STRING,
-                            example="property_name",
-                        ),
-                        "club_website": openapi.Schema(
-                            type=openapi.FORMAT_URI,
-                            example="www.example.com",
-                        ),
-                        "club_registration_number": openapi.Schema(
-                            type=openapi.TYPE_STRING
-                        ),
-                        "documents": openapi.Schema(
-                            type=openapi.TYPE_ARRAY,
-                            items=openapi.Schema(type=openapi.TYPE_FILE),
-                            example=("document1.pdf", "document2.pdf"),
-                        ),
-                        "sport_field": openapi.Schema(type=openapi.TYPE_STRING),
-                    },
-                ),
-                "address": openapi.Schema(
-                    type=openapi.TYPE_STRING, example="123, ABC Street, XYZ City"
-                ),
-                "details": openapi.Schema(
-                    type=openapi.TYPE_STRING, example="Details about the branch"
-                ),
-            },
-        ),
+        request_body=BranchUpdateSerializer,
+        tags=["clubs"],
         responses={
             200: BranchDetailSerializer(),
             400: openapi.Schema(
@@ -440,14 +374,19 @@ class BranchUpdateView(GenericAPIView):
     )
     def patch(self, request):
         try:
-            print("reached here0")
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            branch = Branch.objects.get(owner=owner)
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
             serializer = self.get_serializer(branch, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             branch = serializer.save()
@@ -496,13 +435,18 @@ class ExistingTrainerAddView(GenericAPIView):
         ],
     )
     def post(self, request):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        branch_trainer = serializer.save()
-        return Response(
-            BranchTrainerSerializer(branch_trainer).data,
-            status=status.HTTP_201_CREATED,
-        )
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            branch_trainer = serializer.save()
+            return Response(
+                BranchTrainerSerializer(branch_trainer).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # for existing trainer delete (club)
@@ -539,7 +483,7 @@ class ExistingTrainerDeleteView(GenericAPIView):
     def delete(self, request, trainer_id):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -613,7 +557,7 @@ class ExistingTrainerUpdateView(GenericAPIView):
     def patch(self, request, trainer_id):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -673,7 +617,14 @@ class BranchGalleriesView(GenericAPIView):
     def get(self, request):
         owner = request.user
         branch = Branch.objects.filter(owner=owner).first()
+        if not branch:
+            return Response(
+                {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+            )
         gallery = BranchGallery.objects.filter(branch=branch)
+        if not gallery:
+            return Response([], status=status.HTTP_200_OK)
+        
         serializer = self.get_serializer(gallery, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -682,20 +633,12 @@ class BranchGalleriesView(GenericAPIView):
 class BranchGalleryAddView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
-    serializer_class = BranchGallerySerializer
+    serializer_class = BranchGalleryAddSerializer
 
     @swagger_auto_schema(
         tags=["clubs"],
         operation_description="Add a new gallery to the branch",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                "gallery": openapi.Schema(
-                    type=openapi.TYPE_STRING, description="File path of the gallery"
-                )
-            },
-            required=["gallery"],
-        ),
+        request_body=BranchGalleryAddSerializer,
         responses={
             200: BranchDetailSerializer(),
             400: openapi.Schema(
@@ -721,12 +664,18 @@ class BranchGalleryAddView(GenericAPIView):
     )
     def post(self, request):
         try:
-            owner = request.user
-            branch = Branch.objects.filter(owner=owner).first()
-            serializer = self.get_serializer(data=request.data)
+            user = request.user
+            branch = Branch.objects.filter(owner=user).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            serializer = self.get_serializer(
+                data=request.data, context={"request": request}
+            )
             serializer.is_valid(raise_exception=True)
-            branch_gallery = serializer.save(branch=branch)
-            branch = Branch.objects.get(id=branch_gallery.branch.id)
+            serializer.save()
             return Response(
                 BranchDetailSerializer(branch).data,
                 status=status.HTTP_201_CREATED,
@@ -737,6 +686,7 @@ class BranchGalleryAddView(GenericAPIView):
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 
 # for branch gallery delete (club)
@@ -849,6 +799,7 @@ class BranchMembersView(GenericAPIView):
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
 
 # to delete member subscription
 class MemberSubscriptionDeleteView(GenericAPIView):
@@ -1026,7 +977,7 @@ class NewTrainerAddView(GenericAPIView):
     def post(self, request):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -1083,7 +1034,7 @@ class NewTrainerConvertView(GenericAPIView):
     def post(self, request, new_trainer_id):
         try:
             owner = request.user
-            if not owner.is_owner:
+            if not owner.is_owner():
                 return Response(
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
@@ -2104,7 +2055,7 @@ class BranchMemberUpdateView(GenericAPIView):
     )
     def put(self, request, member_subscription_id):
         owner = request.user
-        if not owner.is_owner:
+        if not owner.is_owner():
             return Response(
                 {"error": "You are not authorized to perform this action"},
                 status=status.HTTP_403_FORBIDDEN,
