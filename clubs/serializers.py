@@ -201,7 +201,7 @@ class BranchAddSerializer(serializers.ModelSerializer):
                 "required": True,
             },
         }
-        
+
     def validate(self, data):
         # Ensure that 'email' and 'username' are provided
         owner_data = data.get("owner")
@@ -211,8 +211,10 @@ class BranchAddSerializer(serializers.ModelSerializer):
         if not club_data:
             raise serializers.ValidationError({"club": "Club data is required."})
         if CustomUser.objects.filter(email=owner_data.get("email")).exists():
-            raise serializers.ValidationError({"email": "user with this email already exists."})
-        
+            raise serializers.ValidationError(
+                {"email": "user with this email already exists."}
+            )
+
         return data
 
     def create(self, validated_data):
@@ -312,15 +314,14 @@ class BranchGalleryAddSerializer(serializers.ModelSerializer):
         fields = [
             "gallery",
         ]
-    
+
     def create(self, validated_data):
-        print('herrrree')
+        print("herrrree")
         gallery = validated_data.get("gallery")
         branch = Branch.objects.get(owner=self.context["request"].user)
         branch_gallery = BranchGallery.objects.create(branch=branch, gallery=gallery)
-        print('nnnooowww')
+        print("nnnooowww")
         return branch_gallery
-    
 
 
 class FacilitiesSerializer(serializers.ModelSerializer):
@@ -391,10 +392,10 @@ class FacilitiesAddSerializer(serializers.ModelSerializer):
 
 
 class BranchUpdateSerializer(serializers.ModelSerializer):
-    owner = CustomUserUpdateSerializer()
-    club = ClubUpdateSerializer()
-    facilities = FacilitiesAddSerializer(many=True)
-    working_hours = WorkingHoursSerializer(many=True)
+    owner = CustomUserUpdateSerializer(required=False)
+    club = ClubUpdateSerializer(required=False)
+    facilities = FacilitiesAddSerializer(required=False, many=True)
+    working_hours = WorkingHoursUpdateSerializer(required=False, many=True)
 
     class Meta:
         model = Branch
@@ -515,7 +516,6 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "created_at",
             # "updated_at",
         ]
-        
 
 
 # class SubscriptionSerializer(serializers.ModelSerializer):
