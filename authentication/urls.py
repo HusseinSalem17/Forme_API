@@ -1,4 +1,3 @@
-# urls.py
 from django.urls import path
 from .views import (
     CompleteProfileTraineeView,
@@ -16,7 +15,6 @@ from .views import (
     SetNewPasswordView,
     UpdatePreferenceTrainerView,
     UpdatePreferenceTraineeView,
-    UpdateProfilePictureView,
     VerifyOTPView,
 )
 
@@ -24,20 +22,20 @@ urlpatterns = [
     path(
         "register/",
         RegisterView.as_view(),
-        name="register_normal",
+        name="register",
     ),
     path(
-        "request_otp/",
+        "request-otp/",
         RequestOTPView.as_view(),
-        name="request_otp_view",
+        name="request_otp",
     ),
     path(
-        "verify_otp/",
+        "verify-otp/",
         VerifyOTPView.as_view(),
         name="verify_otp_view",
     ),
     path(
-        "reset_password/",
+        "reset-password/",
         ResetPasswordView.as_view(),
         name="reset_password_view",
     ),
@@ -47,9 +45,9 @@ urlpatterns = [
         name="login",
     ),
     path(
-        "delete_account/",
+        "delete-account/",
         DeleteAccountView.as_view(),
-        name="delete_user",
+        name="delete_account",
     ),
     path(
         "logout/",
@@ -62,47 +60,33 @@ urlpatterns = [
         name="location",
     ),
     path(
-        "update_profile_picture/",
-        UpdateProfilePictureView.as_view(),
-        name="update_profile_picture",
-    ),
-    path(
-        "complete_profile_trainee/",
+        "complete-profile-trainee/",
         CompleteProfileTraineeView.as_view(),
         name="complete_profile_trainee",
     ),
     path(
-        "complete_profile_trainer/",
+        "complete-profile-trainer/",
         CompleteProfileTrainerView.as_view(),
         name="complete_profile_trainer",
     ),
-    # path(
-    #     "complete_profile/",
-    #     CompleteProfileView.as_view(),
-    #     name="complete_profile",
-    # ),
+
     path(
-        "update_preference_trainee/",
+        "update-preference-trainee/",
         UpdatePreferenceTraineeView.as_view(),
         name="update_preference_trainee",
     ),
     path(
-        "update_preference_trainer/",
+        "update-preference-trainer/",
         UpdatePreferenceTrainerView.as_view(),
         name="update_preference_trainer",
     ),
-    # path(
-    #     "update_preference/",
-    #     UpdatePreferenceView.as_view(),
-    #     name="update_preference",
-    # ),
     path(
-        "forget_password/",
+        "forget-password/",
         ForgetPasswordView.as_view(),
         name="forget_password",
     ),
     path(
-        "set_new_password/",
+        "set-new-password/",
         SetNewPasswordView.as_view(),
         name="set_new_password",
     ),

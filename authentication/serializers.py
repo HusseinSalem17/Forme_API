@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
-from authentication.utils import Util
+from .threads import Util
 from trainings.models import Document, Trainee, Trainer
 
 from .models import OTP, CustomUser, Location
@@ -526,7 +526,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
 class CustomUserClubAddSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
-    profile_picture = serializers.CharField(required=False)
+    profile_picture = Base64ImageField(required=False)
 
     class Meta:
         model = CustomUser
@@ -567,24 +567,16 @@ class CustomUserClubAddSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        if CustomUser.objects.filter(email=validated_data.get("email")).exists():
-            raise serializers.ValidationError({"email": "Email is already in use."})
-
-        profile_picture_data = validated_data.get("profile_picture")
-        if profile_picture_data:
-            format, imgstr = profile_picture_data.split(";base64,")
-            ext = format.split("/")[-1]
-            data = ContentFile(base64.b64decode(imgstr), name="profile_picture." + ext)
-            validated_data["profile_picture"] = data
-
         validated_data.pop(
             "confirm_password"
         )  # Remove confirm_password before creating user
+        print('validated_data', validated_data)
         user = CustomUser.objects.create_owner(**validated_data)
         return user
 
 
 class CustomUserUpdateSerializer(serializers.ModelSerializer):
+    profile_picture = Base64ImageField(required=False)
     class Meta:
         model = CustomUser
         fields = [
