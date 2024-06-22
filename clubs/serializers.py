@@ -201,6 +201,19 @@ class BranchAddSerializer(serializers.ModelSerializer):
                 "required": True,
             },
         }
+        
+    def validate(self, data):
+        # Ensure that 'email' and 'username' are provided
+        owner_data = data.get("owner")
+        club_data = data.get("club")
+        if not owner_data:
+            raise serializers.ValidationError({"owner": "Owner data is required."})
+        if not club_data:
+            raise serializers.ValidationError({"club": "Club data is required."})
+        if CustomUser.objects.filter(email=owner_data.get("email")).exists():
+            raise serializers.ValidationError({"email": "user with this email already exists."})
+        
+        return data
 
     def create(self, validated_data):
         owner_data = validated_data.pop("owner")
@@ -292,13 +305,22 @@ class BranchGallerySerializer(serializers.ModelSerializer):
 
 
 class BranchGalleryAddSerializer(serializers.ModelSerializer):
-    gallery = Base64ImageField()
+    gallery = Base64ImageField(required=True)
 
     class Meta:
         model = BranchGallery
         fields = [
             "gallery",
         ]
+    
+    def create(self, validated_data):
+        print('herrrree')
+        gallery = validated_data.get("gallery")
+        branch = Branch.objects.get(owner=self.context["request"].user)
+        branch_gallery = BranchGallery.objects.create(branch=branch, gallery=gallery)
+        print('nnnooowww')
+        return branch_gallery
+    
 
 
 class FacilitiesSerializer(serializers.ModelSerializer):
@@ -493,6 +515,7 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "created_at",
             # "updated_at",
         ]
+        
 
 
 # class SubscriptionSerializer(serializers.ModelSerializer):

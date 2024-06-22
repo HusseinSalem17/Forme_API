@@ -17,10 +17,7 @@ from .models import (
     WorkingHours,
     NewTrainer,
 )
-from django.contrib.auth.models import Group
 
-from ckeditor.widgets import CKEditorWidget
-from django.db import models
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 
 
@@ -161,6 +158,8 @@ class SubscriptionPlanAdmin(admin.ModelAdmin):
         "current_members_count",
         "expiration_date",
         "subscription",
+        "created_at",
+        "updated_at",
     ]
     search_fields = [
         "id",
@@ -297,16 +296,17 @@ class BranchAdmin(admin.ModelAdmin):
 class AttendanceAdmin(admin.ModelAdmin):
     list_display = [
         "id",
+        "day",
         "date",
         "is_present",
     ]
     search_fields = [
         "id",
-        "branch_member",
+        "member_subscription",
         "is_present",
     ]
     list_filter = [
-        "branch_member",
+        "member_subscription",
         "date",
     ]
 
