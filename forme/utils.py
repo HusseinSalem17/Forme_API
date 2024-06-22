@@ -3,7 +3,11 @@ from typing import MutableMapping
 
 from django.db import models
 import redis
+import os
 
+from rest_framework import status
+from rest_framework.response import Response
+from urllib.parse import quote
 
 
 # class RedisCache(MutableMapping):
@@ -93,3 +97,39 @@ import redis
 #             stats["keyspace_hits"] + stats["keyspace_misses"]
 #         )
 
+def get_file_path(folder, type, filename):
+    # Create the folder path with the name
+    folder_path = f"{folder}/{type}/"
+    # Return the full file path
+    print('folder_path', folder_path)
+    return os.path.join(folder_path, filename)
+
+
+def flatten_errors(errors):
+    flattened_errors = []
+    non_field_errors = errors.pop("non_field_errors", None)
+    for field, messages in errors.items():
+        if isinstance(messages, dict):  # Check if the error is nested
+            errors = {**errors, **messages}
+            errors.pop(field)
+            for key, value in messages.items():
+                flattened_errors.append(" ".join(str(message) for message in value))
+        else:
+            flattened_errors.append(" ".join(str(message) for message in messages))
+    if non_field_errors is not None:
+        flattened_errors.append(" ".join(non_field_errors))
+    return " ".join(flattened_errors)
+
+
+def handle_validation_error(e):
+    errors = e.detail
+    print("errors here", errors)
+    flattened_errors = flatten_errors(errors)
+    print("here flattened_errors", flattened_errors)
+    return Response({"error": flattened_errors}, status=status.HTTP_400_BAD_REQUEST)
+
+def sanitize_path_component(path_component):
+    safe_component = quote(path_component, safe="")
+    return "".join(
+        [c if c.isalnum() or c in (" ", "-", "_") else "_" for c in safe_component]
+    )
