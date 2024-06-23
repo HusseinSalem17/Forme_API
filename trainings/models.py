@@ -11,7 +11,7 @@ from django.contrib.postgres.fields import ArrayField
 
 import random
 
-from clubs.utils import get_file_path
+from forme.utils import get_file_path
 
 
 class Trainee(models.Model):
@@ -24,7 +24,15 @@ class Trainee(models.Model):
     height = models.FloatField(blank=True, null=True)
     weight = models.FloatField(blank=True, null=True)
     fitness_goals = models.TextField(blank=True)
-    current_physical_level = models.CharField(max_length=255, blank=True)
+    current_physical_level = models.CharField(
+        max_length=255,
+        blank=True,
+        choices=[
+            ("beginner", "Beginner"),
+            ("intermediate", "Intermediate"),
+            ("advanced", "Advanced"),
+        ],
+    )
 
     def __str__(self):
         return f"{self.user.username}'s Trainee Profile"
@@ -493,6 +501,7 @@ class Payment(models.Model):
         choices=PAYMENT_STATUS_CHOICES,
         default="pending",
     )
+    waiting_time = models.DateTimeField(null=True, blank=True)
     transaction_id = models.CharField(max_length=255, null=True, blank=True)
     content_type = models.ForeignKey(
         ContentType,

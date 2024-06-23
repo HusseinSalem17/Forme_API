@@ -105,19 +105,40 @@ def get_file_path(folder, type, filename):
     return os.path.join(folder_path, filename)
 
 
+from rest_framework.exceptions import ErrorDetail
+
 def flatten_errors(errors):
     flattened_errors = []
+
+    # Check if errors is a list of ErrorDetail objects or a single string
+    if isinstance(errors, list) and all(isinstance(error, ErrorDetail) for error in errors):
+        return " ".join(str(error) for error in errors)
+    elif isinstance(errors, str):  # Directly return the string if errors is a string
+        return errors
+
     non_field_errors = errors.pop("non_field_errors", None)
     for field, messages in errors.items():
         if isinstance(messages, dict):  # Check if the error is nested
             errors = {**errors, **messages}
             errors.pop(field)
             for key, value in messages.items():
-                flattened_errors.append(" ".join(str(message) for message in value))
+                # Ensure messages are treated as lists before joining
+                if isinstance(value, list):
+                    flattened_errors.append(" ".join(str(message) for message in value))
+                else:
+                    flattened_errors.append(str(value))
         else:
-            flattened_errors.append(" ".join(str(message) for message in messages))
+            # Ensure messages are treated as lists before joining
+            if isinstance(messages, list):
+                flattened_errors.append(" ".join(str(message) for message in messages))
+            else:
+                flattened_errors.append(str(messages))
     if non_field_errors is not None:
-        flattened_errors.append(" ".join(non_field_errors))
+        # Ensure non_field_errors are treated as lists before extending
+        if isinstance(non_field_errors, list):
+            flattened_errors.extend(non_field_errors)
+        else:
+            flattened_errors.append(str(non_field_errors))
     return " ".join(flattened_errors)
 
 

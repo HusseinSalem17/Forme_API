@@ -1,5 +1,8 @@
 from django.urls import path
+
+from clubs.serializers import MemberSubscriptionUpdateSerializer
 from .views import (
+    AttendanceUpdateView,
     BranchDeleteView,
     BranchDetailView,
     BranchGalleriesView,
@@ -9,7 +12,7 @@ from .views import (
     BranchLoginView,
     BranchMemberDeleteView,
     BranchMemberJoinView,
-    BranchMemberUpdateView,
+    MemberSubscriptionUpdateView,
     TraineeBranchMemberUpdateView,
     BranchMembersCountView,
     BranchMembersView,
@@ -36,10 +39,16 @@ from .views import (
     ExistingTrainerDeleteView,
     ExistingTrainerUpdateView,
     TraineeBranchDetailView,
+    TraineeMemberSubscriptionDeleteView,
 )
 
 
 urlpatterns = [
+    path(
+        "attendance/<int:attendance_id>/",
+        AttendanceUpdateView.as_view(),
+        name="attendance_update",
+    ),
     path(
         "branch-register/",
         BranchRegisterView.as_view(),
@@ -88,17 +97,17 @@ urlpatterns = [
     path(
         "exsiting-trainer-add/",
         ExistingTrainerAddView.as_view(),
-        name="add_trainer",
+        name="existing_trainer_add",
     ),
     path(
-        "exsiting-trainer-update/<int:trainer_id>/",
+        "exsiting-trainer-update/<int:branch_trainer_id>/",
         ExistingTrainerUpdateView.as_view(),
-        name="exsiting_trainer_update",
+        name="existing_trainer_update",
     ),
     path(
-        "exsiting-trainer-delete/<int:trainer_id>/",
+        "exsiting-trainer-delete/<int:branch_trainer_id>/",
         ExistingTrainerDeleteView.as_view(),
-        name="exsiting_trainer_delete",
+        name="existing_trainer_delete",
     ),
     path(
         "new-trainer-add/",
@@ -111,12 +120,12 @@ urlpatterns = [
         name="payment_branch_member",
     ),
     path(
-        "new-trainer-update/<int:trainer_id>/",
+        "new-trainer-update/<int:new_trainer_id>/",
         NewTrainerUpdateView.as_view(),
         name="new_trainer_update",
     ),
     path(
-        "new-trainer-delete/<int:trainer_id>/",
+        "new-trainer-delete/<int:new_trainer_id>/",
         NewTrainerDeleteView.as_view(),
         name="new_trainer_delete",
     ),
@@ -138,7 +147,7 @@ urlpatterns = [
     path(
         "member_delete/<int:member_id>/",
         BranchMemberDeleteView.as_view(),
-        name="member_delete",
+        name="branch_member_delete",
     ),
     path(
         "subscriptions/",
@@ -148,27 +157,27 @@ urlpatterns = [
     path(
         "subscription-add/",
         BranchSubscriptionAddView.as_view(),
-        name="create_branch_subscription",
+        name="branch_subscription_add",
     ),
     path(
         "subscription-update/<int:subscription_id>/",
         BranchSubscriptionUpdateView.as_view(),
-        name="edit_branch_subscription",
+        name="branch_subscription_update",
     ),
     path(
         "subscription-delete/<int:subscription_id>/",
         BranchSubscriptionDeleteView.as_view(),
-        name="delete_branch_subscription",
+        name="branch_subscription_delete",
     ),
     path(
         "subscription-plan-delete/<int:subscription_plan_id>/",
         BranchSubscriptionPlanDeleteView.as_view(),
-        name="subscription-plan-delete",
+        name="branch_subscription_plan_delete",
     ),
     path(
         "galleries/",
         BranchGalleriesView.as_view(),
-        name="get_branch_galleries",
+        name="branch_galleries",
     ),
     path(
         "gallery-add/",
@@ -191,14 +200,24 @@ urlpatterns = [
         name="branch_member_join",
     ),
     path(
-        "member-subscription-delete/<int:subscription_id>/",
+        "member-subscription-delete/<int:member_subscription_id>/",
         MemberSubscriptionDeleteView.as_view(),
         name="member_subscription_delete",
+    ),
+    path(
+        "member-subscription-update/<int:member_subscription_id>/",
+        MemberSubscriptionUpdateView.as_view(),
+        name="member_subscription_update",
     ),
     path(
         "branch-nearest-by-location/",
         ClubNearestToFarthestView.as_view(),
         name="branch_nearby",
+    ),
+    path(
+        "trainee-member-subscription-delete/<int:member_subscription_id>/",
+        TraineeMemberSubscriptionDeleteView.as_view(),
+        name="trainee_member_subscription_delete",
     ),
     path(
         "club-nearby/",
@@ -214,10 +233,5 @@ urlpatterns = [
         "trainee-branch-member-update/<int:member_id>/",
         TraineeBranchMemberUpdateView.as_view(),
         name="trainee_branch_member-update",
-    ),
-    path(
-        "branch-member-update/<int:member_subscription_id>/",
-        BranchMemberUpdateView.as_view(),
-        name="branch_member_update",
     ),
 ]

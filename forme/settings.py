@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "trainings",
     "social_auth",
     "debug_toolbar",  # <-- Updated!,
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -162,6 +163,8 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=365),  # Set to 1 year
 }
 
+DEBUG_TOOLBAR_CONFIG = {"IS_RUNNING_TESTS": False}
+
 # CACHES = {
 #     "default": {
 #         "BACKEND": "django_redis.cache.RedisCache",
@@ -257,14 +260,41 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = False
 
-CORS_ALLOW_METHODS = [ "DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT", ]
+CORS_ALLOW_METHODS = [
+    "DELETE",
+    "GET",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+]
 
-CORS_ALLOW_HEADERS = [ "accept", "accept-encoding", "authorization", "content-type", "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with", ] 
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
 
-CELERY_BEAT_SCHEDULE = {
-    "create-daily-attendance": {
-        "task": "clubs.tasks.create_daily_attendance",
-        "schedule": timedelta(days=1),
-    },
-}
+# CELERY SETTINGS
+CELERY_BACKEND = 'redis://localhost:6379/3'
+CELERY_BROKER_URL = 'redis://localhost:6379/4'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/5'
+
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_ENABLE_UTC = True
+
+# CELERY_BEAT_SCHEDULE = {
+#     "create-daily-attendance": {
+#         "task": "clubs.tasks.create_daily_attendance",
+#         "schedule": timedelta(days=1),
+#     },
+# }

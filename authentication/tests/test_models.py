@@ -5,12 +5,12 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from datetime import timedelta
 
-from authentication.models import OTP, CustomUser, Location
+from authentication.models import OTP, Location
 
 User = get_user_model()
 
 
-class TestCustomUser(TestCase):
+class TestUser(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
             username="testuser",
@@ -22,6 +22,40 @@ class TestCustomUser(TestCase):
             phone_number="1234567890",
             auth_provider="email",
         )
+        self.trainee = User.objects.create_trainee(
+            email="trainee@example.com",
+            password="password",
+        )
+        self.trainer = User.objects.create_trainer(
+            email="trainer@example.com",
+            password="password",
+        )
+        self.owner = User.objects.create_owner(
+            username="owner",
+            email="owner@example.com",
+            password="password",
+        )
+        self.admin = User.objects.create_admin(
+            username="admin",
+            email="admin@example.com",
+            password="password",
+        )
+        self.superuser = User.objects.create_superuser(
+            username="superuser",
+            email="superuser@example.com",
+            password="password",
+        )
+
+    # Test Email Filed must be set
+    def test_email_field_must_be_set(self):
+        with self.assertRaises(ValueError) as cm:
+            User.objects.create_user(
+                username="testuser",
+                email="",
+                password="testpassword123",
+                date_of_birth="1990-01-01",
+            )
+        self.assertEqual(str(cm.exception), "The Email field must be set")
 
     # Test user creation
     def test_user_creation(self):
@@ -57,7 +91,7 @@ class TestCustomUser(TestCase):
         self.assertTrue(self.user.is_owner())
 
         # Test is_admin method
-        admin_group, _ = Group.objects.get_or_create(name="admin")
+        admin_group, _ = Group.objects.get_or_create(name="admins")
         self.user.groups.add(admin_group)
         self.assertTrue(self.user.is_admin())
 
@@ -66,48 +100,79 @@ class TestCustomUser(TestCase):
 
     # create_trainee
     def test_create_trainee(self):
-        user = CustomUser.objects.create_trainee(
-            email="ahmed@gmail.com", password="password"
-        )
-        self.assertEqual(user.email, "ahmed@gmail.com")
-        self.assertTrue(user.check_password("password"))
-        self.assertTrue(user.is_trainee())
-        self.assertFalse(user.is_trainer())
-        self.assertFalse(user.is_owner())
-        self.assertFalse(user.is_admin())
+        self.assertEqual(self.trainee.email, "trainee@example.com")
+        self.assertTrue(self.trainee.check_password("password"))
+        self.assertTrue(self.trainee.is_trainee())
+        self.assertFalse(self.trainee.is_trainer())
+        self.assertFalse(self.trainee.is_owner())
+        self.assertFalse(self.trainee.is_admin())
 
     # create_trainer
     def test_create_trainer(self):
-        user = CustomUser.objects.create_trainer(
-            email="mohamed@gmail.com", password="password"
-        )
-        self.assertEqual(user.email, "mohamed@gmail.com")
-        self.assertTrue(user.check_password("password"))
-        self.assertTrue(user.is_trainer())
-        self.assertFalse(user.is_trainee())
-        self.assertFalse(user.is_owner())
-        self.assertFalse(user.is_admin())
+        self.assertEqual(self.trainer.email, "trainer@example.com")
+        self.assertTrue(self.trainer.check_password("password"))
+        self.assertTrue(self.trainer.is_trainer())
+        self.assertFalse(self.trainer.is_trainee())
+        self.assertFalse(self.trainer.is_owner())
+        self.assertFalse(self.trainer.is_admin())
 
     # create_owner
     def test_create_owner(self):
-        user = CustomUser.objects.create_owner(
-            username="amar", email="amar@gmail.com", password="password"
-        )
-        self.assertEqual(user.email, "amar@gmail.com")
-        self.assertTrue(user.check_password("password"))
-        self.assertTrue(user.is_owner())
-        self.assertFalse(user.is_trainee())
-        self.assertFalse(user.is_trainer())
-        self.assertFalse(user.is_admin())
+        self.assertEqual(self.owner.email, "owner@example.com")
+        self.assertTrue(self.owner.check_password("password"))
+        self.assertTrue(self.owner.is_owner())
+        self.assertFalse(self.owner.is_trainee())
+        self.assertFalse(self.owner.is_trainer())
+        self.assertFalse(self.owner.is_admin())
+
+    # create_admin
+    def test_create_admin(self):
+        self.assertEqual(self.admin.email, "admin@example.com")
+        self.assertTrue(self.admin.check_password("password"))
+        self.assertTrue(self.admin.is_admin())
+        self.assertFalse(self.admin.is_trainee())
+        self.assertFalse(self.admin.is_trainer())
+        self.assertFalse(self.admin.is_owner())
+
+    # create_superuser
+    def test_create_superuser(self):
+        self.assertEqual(self.superuser.email, "superuser@example.com")
+        self.assertTrue(self.superuser.check_password("password"))
+        self.assertTrue(self.superuser.is_admin())
+        self.assertFalse(self.superuser.is_trainee())
+        self.assertFalse(self.superuser.is_trainer())
+        self.assertFalse(self.superuser.is_owner())
+    
+    
+    # Test check group function
+    def test_check_group(self):
+        # Test when the user is not a member of the group
+        self.assertFalse(self.user.check_group("trainee"))
+
+        # Add the user to the group
+        trainee_group, _ = Group.objects.get_or_create(name="trainees")
+        self.user.join_group("trainees")
+
+        # Test when the user is a member of the group
+        self.assertTrue(self.user.check_group("trainee"))
+
+    # Test join group function
+    def test_join_group(self):
+        # Test joining a group
+        self.assertFalse(self.user.check_group("trainee"))
+
+        self.user.join_group("trainees")
+
+        self.assertTrue(self.user.check_group("trainee"))
 
 
 class TestLocationModel(TestCase):
     def setUp(self):
         # Create a user instance to use for creating a Location
-        self.user = CustomUser.objects.create_trainee(
+        self.user = User.objects.create_trainee(
             email="user@example.com", password="password"
         )
-        self.user_content_type = ContentType.objects.get_for_model(CustomUser)
+        self.user_content_type = ContentType.objects.get_for_model(User)
 
     def test_create_location_for_user(self):
         # Create a Location instance for the user created in setUp
@@ -121,7 +186,7 @@ class TestLocationModel(TestCase):
         self.assertEqual(location.longitude, 123.456789)
         self.assertEqual(location.latitude, 98.765432)
         self.assertEqual(location.content_object, self.user)
-        self.assertTrue(isinstance(location.content_object, CustomUser))
+        self.assertTrue(isinstance(location.content_object, User))
         self.assertEqual(location.content_object.email, "user@example.com")
 
     def test_location_string_representation(self):

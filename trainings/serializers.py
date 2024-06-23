@@ -25,9 +25,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 
-
-
-
 class WorkoutListSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
@@ -177,6 +174,7 @@ class ReviewsDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = [
+            "id",
             "ratings",
             "comment",
             "created_at",
@@ -845,7 +843,7 @@ class PackageUpdateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "session_type": {"required": True},
             "is_active": {"required": False},
-            "price": {"required": True},
+            "price": {"required": False},
         }
 
 
@@ -1313,7 +1311,7 @@ class ClientRequestUpdateSerializer(serializers.ModelSerializer):
         instance.status = validated_data.get("status", instance.status)
         instance.save()
         return instance
-    
+
 
 class TraineeUpdateSerializer(serializers.ModelSerializer):
     user = CustomUserUpdateSerializer()
@@ -1564,4 +1562,5 @@ class ReviewUpdateSerializer(serializers.ModelSerializer):
         instance.comment = validated_data.get("comment", instance.comment)
         instance.save()
         return instance
+
 

@@ -7,6 +7,7 @@ from authentication.serializers import (
 )
 from trainings.models import Program, Trainee, Trainer, Workout
 from trainings.serializers import (
+    TraineeSerializer,
     TrainerListSerializer,
     ReviewsDetailSerializer,
 )
@@ -154,10 +155,16 @@ class TrainerExistingAddSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         trainer_slug = validated_data.get("trainer_slug")
-        trainer = Trainer.objects.get(slug=trainer_slug)
+        trainer = Trainer.objects.filter(slug=trainer_slug).first()
+        if not trainer:
+            raise serializers.ValidationError({"error": "Trainer not found"})
         branch = Branch.objects.filter(owner=self.context["request"].user).first()
-        if BranchTrainer.objects.filter(trainer=trainer).exists():
-            raise serializers.ValidationError({"trainer": "Trainer already exists"})
+        if not branch:
+            raise serializers.ValidationError({"error": "Branch not found"})
+        if BranchTrainer.objects.filter(trainer=trainer, branch=branch).exists():
+            raise serializers.ValidationError(
+                {"error": "Trainer already exists in this branch"}
+            )
         branch_trainer = BranchTrainer.objects.create(trainer=trainer, branch=branch)
         return branch_trainer
 
@@ -383,12 +390,19 @@ class WorkingHoursUpdateSerializer(serializers.ModelSerializer):
 
 
 class FacilitiesAddSerializer(serializers.ModelSerializer):
+    icon = Base64ImageField(required=False)
+
     class Meta:
         model = Facilities
         fields = [
             "name",
             "icon",
         ]
+        
+    def create(self, validated_data):
+        icon = validated_data.get("icon")
+        facilities = Facilities.objects.create(**validated_data)
+        return facilities
 
 
 class BranchUpdateSerializer(serializers.ModelSerializer):
@@ -452,19 +466,35 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
             if facilities is not None:
                 facility_ids = [facility.get("id") for facility in facilities]
                 instance.facilities.clear()
-                instance.facilities.add(*facility_ids)
+                instance.facilities.add(*facility_ids).sa
 
             if working_hours is not None:
                 for working_hour in working_hours:
+                    print("now 3")
                     day = working_hour.get("day")
+                    is_open = working_hour.get("is_open")
                     time_data = working_hour.get("day_time")
                     working_hour_instance = WorkingHours.objects.get(day=day)
                     time_instance = Time.objects.filter(day=working_hour_instance)
-                    for time in time_data:
-                        time_instance.update(
-                            from_time=time.get("from_time"), to_time=time.get("to_time")
-                        )
-
+                    for time_entry in time_data:
+                        time_id = time_entry.get("id", None)
+                        if time_id:
+                            # Update existing Time instance
+                            time_instance = Time.objects.get(
+                                id=time_id, day=working_hour_instance
+                            )
+                            time_instance.from_time = time_entry.get("from_time")
+                            time_instance.to_time = time_entry.get("to_time")
+                            time_instance.save()
+                        else:
+                            # Create new Time instance
+                            Time.objects.create(
+                                day=working_hour_instance,
+                                from_time=time_entry.get("from_time"),
+                                to_time=time_entry.get("to_time"),
+                            )
+                    working_hour_instance.is_open = is_open
+                    working_hour_instance.save()
             instance.address = validated_data.get("address", instance.address)
             instance.details = validated_data.get("details", instance.details)
             instance.save()
@@ -481,14 +511,13 @@ class SubscriptionPlanAddSerializer(serializers.ModelSerializer):
             "is_offer",
             "max_members",
             "expiration_date",
-            "is_added",
         ]
         extra_kwargs = {
             "duration": {
-                "required": False,
+                "required": True,
             },
             "price": {
-                "required": False,
+                "required": True,
             },
             "is_offer": {
                 "required": False,
@@ -501,8 +530,15 @@ class SubscriptionPlanAddSerializer(serializers.ModelSerializer):
             },
         }
 
+    def create(self, validated_data):
+        validated_data["is_added"] = True
+        return SubscriptionPlan.objects.create(**validated_data)
+
 
 class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
     class Meta:
         model = SubscriptionPlan
         fields = [
@@ -512,10 +548,20 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
             "is_offer",
             "max_members",
             "expiration_date",
-            "is_added",
             "created_at",
-            # "updated_at",
+            "updated_at",
         ]
+
+    def update(self, instance, validated_data):
+        instance.duration = validated_data.get("duration", instance.duration)
+        instance.price = validated_data.get("price", instance.price)
+        instance.is_offer = validated_data.get("is_offer", instance.is_offer)
+        instance.max_members = validated_data.get("max_members", instance.max_members)
+        instance.expiration_date = validated_data.get(
+            "expiration_date", instance.expiration_date
+        )
+        instance.save()
+        return instance
 
 
 # class SubscriptionSerializer(serializers.ModelSerializer):
@@ -539,6 +585,8 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
 
 
 class SubscriptionSummarySerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
         model = Subscription
@@ -546,7 +594,7 @@ class SubscriptionSummarySerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
-            # "active",
+            "active",
             "created_at",
             "updated_at",
         ]
@@ -598,12 +646,13 @@ class SubscriptionAddSerializer(serializers.ModelSerializer):
                 for subscription_plan in subscription_plans_data:
                     duration = subscription_plan.get("duration", None)
                     s = SubscriptionPlan.objects.get(
-                        duration=duration, subscription=subscription
+                        duration=duration,
+                        subscription=subscription,
                     )
                     for key, value in subscription_plan.items():
                         setattr(s, key, value)
-
-                    s.save()
+                    s.is_added = True
+                s.save()
             return subscription
 
 
@@ -658,7 +707,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "title",
             "min_age",
             "max_age",
-            # "active",
+            "active",
             "subscription_plans",
             "price",
             "max_members",
@@ -671,9 +720,9 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
             "price": {
                 "required": False,
             },
-            # "active": {
-            #     "required": False,
-            # },
+            "active": {
+                "required": False,
+            },
             "min_age": {
                 "required": False,
             },
@@ -700,22 +749,26 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
 
             instance.title = validated_data.get("title", instance.title)
             instance.price = validated_data.get("price", instance.price)
-            # instance.active = validated_data.get("active", instance.active)
+            instance.active = validated_data.get("active", instance.active)
             instance.min_age = validated_data.get("min_age", instance.min_age)
             instance.max_age = validated_data.get("max_age", instance.max_age)
             instance.max_members = validated_data.get(
                 "max_members", instance.max_members
             )
             subscription_plans_data = validated_data.pop("subscription_plans", None)
+            print("nooowww qqqqq", subscription_plans_data)
             if subscription_plans_data is not None:
+                print("nooowww wwwww")
                 for subscription_plan in subscription_plans_data:
+                    print("nooowww ccccc")
                     duration = subscription_plan.get("duration", None)
                     s = SubscriptionPlan.objects.get(
                         duration=duration, subscription=instance
                     )
                     for key, value in subscription_plan.items():
                         setattr(s, key, value)
-
+                        print("nooowww sssss")
+                        setattr(s, "is_added", True)
                 s.save()
             instance.save()
             return instance
@@ -753,7 +806,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
-            # "active",
+            "active",
             "target_gender",
             "min_age",
             "max_age",
@@ -765,7 +818,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         ]
 
     def get_subscription_plan(self, obj):
-        subscription_plan = SubscriptionPlan.objects.filter(subscription=obj)
+        subscription_plan = SubscriptionPlan.objects.filter(
+            subscription=obj,
+            is_added=True,
+        )
         return SubscriptionPlanSerializer(subscription_plan, many=True).data
 
 
@@ -808,6 +864,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = [
             "id",
+            "day",
             "date",
             "is_present",
         ]
@@ -836,17 +893,40 @@ class MemberSubscriptionPostSerializer(serializers.ModelSerializer):
 
 
 class MemberSubscriptionSerializer(serializers.ModelSerializer):
-    # subscription = serializers.SerializerMethodField()
+    subscription = serializers.SerializerMethodField()
+    subscription_plan = serializers.SerializerMethodField()
+    attendance = serializers.SerializerMethodField()
 
     class Meta:
         model = MemberSubscription
         fields = [
             "id",
             "trainer",
-            # "subscriptions",
-            "created_at",
-            "updated_at",
+            "new_trainer",
+            "subscription",
+            "subscription_plan",
+            "attendance",
+            "start_date",
+            "end_date",
         ]
+
+    def get_subscription(self, obj):
+        subscription = obj.subscription
+        if subscription is None:
+            return None
+        return SubscriptionSummarySerializer(subscription).data
+
+    def get_subscription_plan(self, obj):
+        subscription_plan = obj.subscription_plan
+        if subscription_plan is None:
+            return None
+        return SubscriptionPlanSerializer(subscription_plan).data
+
+    def get_attendance(self, obj):
+        attendance = Attendance.objects.filter(member_subscription=obj)
+        if not attendance:
+            return None
+        return AttendanceSerializer(attendance, many=True).data
 
 
 class NewTrainerAddSerializer(serializers.ModelSerializer):
@@ -884,7 +964,7 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
 
 
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):
-    profile_picture = serializers.CharField(required=False)
+    profile_picture = Base64ImageField(required=False)
 
     class Meta:
         model = NewTrainer
@@ -911,18 +991,13 @@ class NewTrainerUpdateSerializer(serializers.ModelSerializer):
         }
 
     def update(self, instance, validated_data):
-        profile_picture = validated_data.pop("profile_picture", None)
-        if profile_picture:
-            format, imgstr = profile_picture.split(";base64,")
-            ext = format.split("/")[-1]
-            data = ContentFile(
-                base64.b64decode(imgstr), name=f"{instance.username}.{ext}"
-            )
-            instance.profile_picture = data
         instance.email = validated_data.get("email", instance.email)
         instance.username = validated_data.get("username", instance.username)
         instance.phone_number = validated_data.get(
             "phone_number", instance.phone_number
+        )
+        instance.profile_picture = validated_data.get(
+            "profile_picture", instance.profile_picture
         )
         instance.save()
         return instance
@@ -1010,7 +1085,6 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
-            # "active",
             "price",
             "max_members",
         ]
@@ -1021,9 +1095,6 @@ class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
             "price": {
                 "required": False,
             },
-            # "active": {
-            #     "required": False,
-            # },
             "max_members": {
                 "required": False,
             },
@@ -1110,7 +1181,7 @@ class BranchMemberJoinSerializer(serializers.Serializer):
 
     def validate_trainer(self, value):
         if not Trainer.objects.filter(slug=value).exists():
-            raise serializers.ValidationError({"trainer": "Trainer does not exist."})
+            raise serializers.ValidationError({"trainer": "Trainer not found"})
         return value
 
     def create(self, validated_data):
@@ -1150,59 +1221,65 @@ class BranchMemberJoinSerializer(serializers.Serializer):
             return branchMember
 
 
-class BranchMemberUpdateSerializer(serializers.ModelSerializer):
-    subscription_plan = serializers.IntegerField(
-        required=False,
-        error_messages={"required": "Subscription plan is required."},
-    )
-    trainer = serializers.IntegerField(
-        required=False,
-        error_messages={"required": "Trainer is required."},
-    )
+class MemberSubscriptionUpdateSerializer(serializers.ModelSerializer):
+    subscription_id = serializers.IntegerField(required=False)
+    trainer_id = serializers.IntegerField(required=False)
+    new_trainer_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = MemberSubscription
         fields = [
-            "subscription_plan",
-            "trainer",
+            "subscription_id",
+            "trainer_id",
+            "new_trainer_id",
         ]
 
-    def validate_subscription_plan(self, value):
-        if not Subscription.objects.filter(id=value).exists():
-            raise serializers.ValidationError(
-                {"subscription_plan": "Subscription plan does not exist."}
-            )
+    def validate_subscription_id(self, value):
+        if value and not Subscription.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Subscription does not exist.")
         return value
 
-    def validate_trainer(self, value):
-        if not BranchTrainer.objects.filter(id=value).exists():
-            raise serializers.ValidationError({"trainer": "Trainer does not exist."})
+    def validate_trainer_id(self, value):
+        if value and not (
+            BranchTrainer.objects.filter(id=value).exists()
+            or NewTrainer.objects.filter(id=value).exists()
+        ):
+            raise serializers.ValidationError("Trainer not found")
         return value
 
     def update(self, instance, validated_data):
-        print("reached here 12")
-        subscription_plan = validated_data.get("subscription_plan")
-        trainer = validated_data.get("trainer")
-        if subscription_plan:
-            subscription_plan = Subscription.objects.get(id=subscription_plan)
-            trainer = BranchTrainer.objects.get(id=trainer)
-            instance.subscription = subscription_plan
-            instance.trainer = trainer
-            instance.save()
+        subscription_id = validated_data.get("subscription_id")
+        trainer_id = validated_data.get("trainer_id")
+        new_trainer_id = validated_data.get("new_trainer_id")
+
+        if subscription_id:
+            instance.subscription = Subscription.objects.get(id=subscription_id)
+
+        if trainer_id:
+            print("stay here")
+            instance.trainer = BranchTrainer.objects.get(id=trainer_id)
+            instance.new_trainer = None
+
+        if new_trainer_id:
+            print("enter here")
+            instance.new_trainer = NewTrainer.objects.get(id=new_trainer_id)
+            instance.trainer = None
+
+        instance.save()
         return instance
 
 
 class BranchMemberSerializer(serializers.ModelSerializer):
-    # trainee = TraineeSerializer()
+    trainee = TraineeSerializer()
     member_subscription = serializers.SerializerMethodField()
-    attendance = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
         model = BranchMember
         fields = [
-            # "trainee",
+            "trainee",
             "member_subscription",
-            "attendance",
             "created_at",
             "updated_at",
         ]
@@ -1214,17 +1291,14 @@ class BranchMemberSerializer(serializers.ModelSerializer):
         # Explicitly convert queryset to list (should not be necessary but can be tried if issues persist)
         return MemberSubscriptionSerializer(list(member_subscription), many=True).data
 
-    def get_attendance(self, obj):
-        attendance = Attendance.objects.filter(branch_member=obj)
-        if not attendance:
-            return None
-        return AttendancesSerializer(attendance, many=True).data
-
 
 class AttendanceSerializerTemp(serializers.ModelSerializer):
     class Meta:
         model = Attendance
-        fields = ["date", "is_present"]
+        fields = [
+            "date",
+            "is_present",
+        ]
 
 
 class SubscriptionPlanMemberSerializer(serializers.ModelSerializer):
@@ -1248,12 +1322,13 @@ class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
         fields = [
             "id",
             "trainer",
+            "new_trainer",
             "subscription_plan",
             "subscription",
             "state",
+            "attendance",
             "start_date",
             "end_date",
-            "attendance",
         ]
 
     def get_subscription(self, obj):
@@ -1517,26 +1592,25 @@ class NewTrainerConvertSerializer(serializers.Serializer):
 
     def validate_trainer_slug(self, value):
         if not Trainer.objects.filter(slug=value).exists():
-            raise serializers.ValidationError({"trainer": "Trainer does not exist."})
+            raise serializers.ValidationError({"trainer": "Trainer not found"})
         return value
 
     def create(self, validated_data):
         id = self.context["new_trainer_id"]
         trainer_slug = validated_data.get("trainer_slug")
-        new_trainer = NewTrainer.objects.get(id=id)
-        if new_trainer is None:
-            raise serializers.ValidationError(
-                {"new_trainer": "New trainer does not exist."}
-            )
-        trainer = Trainer.objects.get(slug=trainer_slug)
-        if trainer is None:
-            raise serializers.ValidationError({"trainer": "Trainer does not exist."})
+        new_trainer = NewTrainer.objects.filter(id=id).first()
+        if not new_trainer:
+            raise serializers.ValidationError({"new_trainer": "New Trainer not found"})
+        trainer = Trainer.objects.filter(slug=trainer_slug).first()
+        if not trainer:
+            raise serializers.ValidationError({"trainer": "Trainer not found"})
         if BranchTrainer.objects.filter(trainer=trainer).exists():
             raise serializers.ValidationError({"trainer": "Trainer already exists."})
 
         branch_trainer = BranchTrainer.objects.create(
             trainer=trainer,
             members_count=new_trainer.members_count,
+            branch=new_trainer.branch,
         )
         branch_trainer.subscriptions.set(new_trainer.subscriptions.all())
         new_trainer.delete()
@@ -1609,10 +1683,12 @@ class AttendanceUpdateSerializer(serializers.ModelSerializer):
         model = Attendance
         fields = [
             "is_present",
+            "date",
         ]
 
     def update(self, instance, validated_data):
         instance.is_present = validated_data.get("is_present", instance.is_present)
+        instance.date = validated_data.get("date", instance.date)
         instance.save()
         return instance
 

@@ -18,12 +18,11 @@ from .serializers import (
     BranchLoginSerializer,
     BranchMemberJoinSerializer,
     BranchMemberSerializer,
-    BranchMemberUpdateSerializer,
+    MemberSubscriptionUpdateSerializer,
     BranchTrainerUpdateSerializer,
     BranchTrainerSerializer,
     BranchUpdateSerializer,
     ClubsListSerializer,
-    MemberSubscriptionSerializer,
     MemberSubscriptionSerializerTemp,
     NewTrainerAddSerializer,
     NewTrainerConvertSerializer,
@@ -107,7 +106,17 @@ class AttendanceUpdateView(GenericAPIView):
     )
     def put(self, request, attendance_id):
         try:
-            attendance = Attendance.objects.get(id=attendance_id)
+            user = request.user
+            if not user.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            attendance = Attendance.objects.filter(id=attendance_id).first()
+            if not attendance:
+                return Response(
+                    {"error": "Attendance not found"}, status=status.HTTP_404_NOT_FOUND
+                )
             serializer = self.get_serializer(
                 attendance, data=request.data, partial=True
             )
@@ -436,6 +445,12 @@ class ExistingTrainerAddView(GenericAPIView):
     )
     def post(self, request):
         try:
+            user = request.user
+            if not user.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             branch_trainer = serializer.save()
@@ -480,7 +495,7 @@ class ExistingTrainerDeleteView(GenericAPIView):
             ),
         ],
     )
-    def delete(self, request, trainer_id):
+    def delete(self, request, branch_trainer_id):
         try:
             owner = request.user
             if not owner.is_owner():
@@ -489,32 +504,26 @@ class ExistingTrainerDeleteView(GenericAPIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
             branch = Branch.objects.filter(owner=owner).first()
-            trainer = Trainer.objects.get(id=trainer_id)
-            branch_trainer = BranchTrainer.objects.get(trainer=trainer)
-            if not branch_trainer:
+            if not branch:
                 return Response(
-                    {"error": "Branch trainer not found"},
+                    {"error": "Branch does not exist"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            if branch_trainer in branch.trainers.all():
-                branch_trainer.delete()
-                return Response(
-                    {"message": "Branch trainer deleted successfully"},
-                    status=status.HTTP_200_OK,
-                )
-            else:
-                return Response(
-                    {"error": "Branch trainer not found"},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            # Fetch the BranchTrainer directly using trainer_id as the BranchTrainer ID
+            branch_trainer = BranchTrainer.objects.get(
+                id=branch_trainer_id, branch=branch
+            )
+            # No need to check if branch_trainer is in branch.trainers.all() since we're directly fetching it
+            branch_trainer.delete()
+            return Response(
+                {"message": "Branch trainer deleted successfully"},
+                status=status.HTTP_200_OK,
+            )
         except BranchTrainer.DoesNotExist:
             return Response(
                 {"error": "Branch trainer not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        except serializers.ValidationError as e:
-            return handle_validation_error(e)
         except Exception as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -554,7 +563,7 @@ class ExistingTrainerUpdateView(GenericAPIView):
             ),
         ],
     )
-    def patch(self, request, trainer_id):
+    def patch(self, request, branch_trainer_id):
         try:
             owner = request.user
             if not owner.is_owner():
@@ -562,9 +571,12 @@ class ExistingTrainerUpdateView(GenericAPIView):
                     {"error": "You are not authorized to perform this action"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            user = CustomUser.objects.get(id=trainer_id)
-            trainer = Trainer.objects.get(user=user)
-            branch_trainer = BranchTrainer.objects.get(trainer=trainer)
+            branch_trainer = BranchTrainer.objects.filter(id=branch_trainer_id).first()
+            if not branch_trainer:
+                return Response(
+                    {"error": "Branch trainer not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             serializer = self.get_serializer(
                 branch_trainer, data=request.data, partial=True
             )
@@ -624,7 +636,7 @@ class BranchGalleriesView(GenericAPIView):
         gallery = BranchGallery.objects.filter(branch=branch)
         if not gallery:
             return Response([], status=status.HTTP_200_OK)
-        
+
         serializer = self.get_serializer(gallery, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -688,7 +700,6 @@ class BranchGalleryAddView(GenericAPIView):
             )
 
 
-
 # for branch gallery delete (club)
 class BranchGalleryDeleteView(GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -732,8 +743,23 @@ class BranchGalleryDeleteView(GenericAPIView):
     def delete(self, request, gallery_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            gallery = BranchGallery.objects.get(id=gallery_id)
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            gallery = BranchGallery.objects.filter(id=gallery_id).first()
+            if not gallery:
+                return Response(
+                    {"error": "Gallery does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             if gallery.branch == branch:
                 gallery.delete()
                 return Response(
@@ -741,12 +767,10 @@ class BranchGalleryDeleteView(GenericAPIView):
                     status=status.HTTP_200_OK,
                 )
             else:
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-        except BranchGallery.DoesNotExist:
-            return Response(
-                {"error": "Gallery not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+                return Response(
+                    {"error": "Gallery does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
         except Exception as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -787,10 +811,23 @@ class BranchMembersView(GenericAPIView):
     def get(self, request):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            members = branch.members.all()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            # Filter members who have at least one subscription
+            members_with_subscriptions = BranchMember.objects.filter(
+                branch=branch, member_subscription__isnull=False
+            ).distinct()
             return Response(
-                BranchMemberSerializer(members, many=True).data,
+                BranchMemberSerializer(members_with_subscriptions, many=True).data,
                 status=status.HTTP_200_OK,
             )
         except serializers.ValidationError as e:
@@ -841,13 +878,32 @@ class MemberSubscriptionDeleteView(GenericAPIView):
             ),
         ],
     )
-    def delete(self, request, subscription_id):
+    def delete(self, request, member_subscription_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            subscription = MemberSubscription.objects.get(id=subscription_id)
-            if subscription.branch == branch:
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            subscription = MemberSubscription.objects.filter(
+                id=member_subscription_id
+            ).first()
+            print("come hear, ", subscription)
+            if not subscription:
+                return Response(
+                    {"error": "Member subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if subscription.subscription.branch == branch:
                 subscription.delete()
+                print("come hear second")
                 return Response(
                     {"message": "Member subscription deleted successfully"},
                     status=status.HTTP_200_OK,
@@ -908,19 +964,29 @@ class BranchMemberDeleteView(GenericAPIView):
     def delete(self, request, member_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             member = BranchMember.objects.get(id=member_id)
             if member.branch == branch:
                 member.delete()
                 return Response(
-                    {"message": "Member deleted successfully"},
+                    {"message": "Branch member deleted successfully"},
                     status=status.HTTP_200_OK,
                 )
             else:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
         except BranchMember.DoesNotExist:
             return Response(
-                {"error": "Member not found"},
+                {"error": "Branch member not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except Exception as e:
@@ -983,6 +1049,11 @@ class NewTrainerAddView(GenericAPIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
             branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             trainer = serializer.save(branch=branch)
@@ -1050,10 +1121,8 @@ class NewTrainerConvertView(GenericAPIView):
             return Response(
                 BranchTrainerSerializer(trainer).data, status=status.HTTP_200_OK
             )
-        except Trainer.DoesNotExist:
-            return Response(
-                {"error": "Trainer not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
         except Exception as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1100,11 +1169,26 @@ class NewTrainerDeleteView(GenericAPIView):
             ),
         ],
     )
-    def delete(self, request, trainer_id):
+    def delete(self, request, new_trainer_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            trainer = NewTrainer.objects.get(id=trainer_id)
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            trainer = NewTrainer.objects.filter(id=new_trainer_id).first()
+            if not trainer:
+                return Response(
+                    {"error": "New Trainer not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             if trainer.branch == branch:
                 trainer.delete()
                 return Response(
@@ -1156,11 +1240,26 @@ class NewTrainerUpdateView(GenericAPIView):
             ),
         ],
     )
-    def patch(self, request, trainer_id):
+    def patch(self, request, new_trainer_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            trainer = NewTrainer.objects.get(id=trainer_id)
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            trainer = NewTrainer.objects.filter(id=new_trainer_id).first()
+            if not trainer:
+                return Response(
+                    {"error": "New Trainer not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             serializer = self.get_serializer(trainer, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             trainer = serializer.save(branch=branch)
@@ -1209,8 +1308,19 @@ class BranchReviewsView(GenericAPIView):
     )
     def get(self, request):
         owner = request.user
+        if not owner.is_owner():
+            return Response(
+                {"error": "You are not authorized to perform this action"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         branch = Branch.objects.filter(owner=owner).first()
+        if not branch:
+            return Response(
+                {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+            )
         reviews = branch.reviews.all()
+        if not reviews:
+            return Response([], status=status.HTTP_200_OK)
         serializer = self.get_serializer(reviews, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -1249,10 +1359,20 @@ class BranchSubscriptionsView(GenericAPIView):
     )
     def get(self, request):
         owner = request.user
+        if not owner.is_owner():
+            return Response(
+                {"error": "You are not authorized to perform this action"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         branch = Branch.objects.filter(owner=owner).first()
+        if not branch:
+            return Response(
+                {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+            )
         subscriptions = Subscription.objects.filter(branch=branch)
+        if not subscriptions:
+            return Response([], status=status.HTTP_200_OK)
         serializer = self.get_serializer(subscriptions, many=True)
-        serializer.is_valid(raise_exception=True)
         return Response(
             serializer.data,
             status=status.HTTP_200_OK,
@@ -1302,8 +1422,25 @@ class BranchSubscriptionPlanDeleteView(GenericAPIView):
     def delete(self, request, subscription_plan_id):
         try:
             owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             branch = Branch.objects.filter(owner=owner).first()
-            subscription_plan = SubscriptionPlan.objects.get(id=subscription_plan_id)
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            subscription_plan = SubscriptionPlan.objects.filter(
+                id=subscription_plan_id
+            ).first()
+            if not subscription_plan:
+                return Response(
+                    {"error": "Subscription Plan not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             if subscription_plan.subscription.branch == branch:
                 subscription_plan.delete()
                 return Response(
@@ -1312,11 +1449,6 @@ class BranchSubscriptionPlanDeleteView(GenericAPIView):
                 )
             else:
                 return Response(status=status.HTTP_400_BAD_REQUEST)
-        except SubscriptionPlan.DoesNotExist:
-            return Response(
-                {"error": "Subscription plan not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
         except Exception as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1356,18 +1488,35 @@ class BranchSubscriptionAddView(GenericAPIView):
         ],
     )
     def post(self, request):
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        serializer = self.get_serializer(
-            data=request.data, context={"request": request}
-        )
-        serializer.is_valid(raise_exception=True)
-        subscriptions = serializer.save(branch=branch)
+        try:
+            owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+                )
+            serializer = self.get_serializer(
+                data=request.data, context={"request": request}
+            )
+            serializer.is_valid(raise_exception=True)
+            subscriptions = serializer.save(branch=branch)
 
-        return Response(
-            SubscriptionSerializer(subscriptions).data,
-            status=status.HTTP_201_CREATED,
-        )
+            return Response(
+                SubscriptionSerializer(subscriptions).data,
+                status=status.HTTP_201_CREATED,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # for branch subscription update (club)
@@ -1403,16 +1552,39 @@ class BranchSubscriptionUpdateView(GenericAPIView):
         ],
     )
     def put(self, request, subscription_id):
-        owner = request.user
-        branch = Branch.objects.filter(owner=owner).first()
-        subscription = Subscription.objects.get(id=subscription_id)
-        serializer = self.get_serializer(subscription, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        subscription = serializer.save(branch=branch)
-        return Response(
-            SubscriptionSerializer(subscription).data,
-            status=status.HTTP_200_OK,
-        )
+        try:
+            owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                )
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+                )
+            subscription = Subscription.objects.filter(id=subscription_id).first()
+            if not subscription:
+                return Response(
+                    {"error": "Subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            serializer = self.get_serializer(
+                subscription, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            subscription = serializer.save(branch=branch)
+            return Response(
+                SubscriptionSerializer(subscription).data,
+                status=status.HTTP_200_OK,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # for branch subscription delete (club)
@@ -1458,31 +1630,44 @@ class BranchSubscriptionDeleteView(GenericAPIView):
     def delete(self, request, subscription_id):
         try:
             owner = request.user
-            branch = Branch.objects.filter(owner=owner).first()
-            subscription = Subscription.objects.get(id=subscription_id)
-            if subscription.branch == branch:
-                subscription.delete()
+            if not owner.is_owner():
                 return Response(
-                    {"message": "Subscription deleted successfully"},
-                    status=status.HTTP_200_OK,
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
                 )
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+                )
+            print("subscription_id here", subscription_id)
+            subscription = Subscription.objects.filter(id=subscription_id).first()
+            print("subscription here", subscription)
+            if not subscription:
+                print("entered here")
+                return Response(
+                    {"error": "Subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if subscription.branch == branch:
+                print("got me here")
+                subscription.delete()
             else:
                 return Response(
                     {"error": "Subscription not found"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-        except Subscription.DoesNotExist:
             return Response(
-                {"error": "Subscription not found"},
-                status=status.HTTP_404_NOT_FOUND,
+                {"message": "Subscription deleted successfully"},
+                status=status.HTTP_200_OK,
             )
         except Exception as e:
             return Response(
-                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
-# under testing
 class BranchMembersCountView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -1529,6 +1714,92 @@ class BranchMembersCountView(GenericAPIView):
                 .order_by("date")
             )
         return Response(members_count)
+
+
+# for update branch member from branch (branch)
+class MemberSubscriptionUpdateView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    serializer_class = MemberSubscriptionUpdateSerializer
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Update the details of a branch member",
+        request_body=MemberSubscriptionUpdateSerializer,
+        responses={
+            200: BranchMemberSerializer,
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def put(self, request, member_subscription_id):
+        try:
+            owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            print("reached here")
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            member_subscription = MemberSubscription.objects.filter(
+                id=member_subscription_id
+            ).first()
+            if not member_subscription:
+                return Response(
+                    {"error": "Member subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            print("not reached here")
+            if not member_subscription.member.branch == branch:
+                return Response(
+                    {"error": "Branch member not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            print('request.data', request.data)
+            serializer = self.get_serializer(
+                member_subscription,
+                data=request.data,
+                partial=True,
+            )
+            print("reached here Now")
+            serializer.is_valid(raise_exception=True)
+            print("now here")
+            member_subscription = serializer.save()
+            print("reached here now")
+            return Response(
+                MemberSubscriptionSerializerTemp(member_subscription).data,
+                status=status.HTTP_200_OK,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 #  ------------------***************------------------  #
@@ -1908,7 +2179,7 @@ class ClubLowestToHighestPricebyView(GenericAPIView):
 
 
 # for member subscription delete (trainee)
-class MemberSubscriptionDeleteView(GenericAPIView):
+class TraineeMemberSubscriptionDeleteView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
@@ -1949,9 +2220,14 @@ class MemberSubscriptionDeleteView(GenericAPIView):
     )
     def delete(self, request, member_subscription_id):
         try:
-            member_subscription = MemberSubscription.objects.get(
+            member_subscription = MemberSubscription.objects.filter(
                 id=member_subscription_id
-            )
+            ).first()
+            if not member_subscription:
+                return Response(
+                    {"error": "Member subscription not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
             member_subscription.delete()
             return Response(
                 {"message": "Member subscription deleted successfully"},
@@ -1970,14 +2246,14 @@ class MemberSubscriptionDeleteView(GenericAPIView):
 
 # for branch member update (trainee)
 class TraineeBranchMemberUpdateView(GenericAPIView):
-    serializer_class = BranchMemberUpdateSerializer
+    serializer_class = MemberSubscriptionUpdateSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
     @swagger_auto_schema(
         tags=["Trainee App"],
         operation_description="Update the details of a branch member",
-        request_body=BranchMemberUpdateSerializer,
+        request_body=MemberSubscriptionUpdateSerializer,
         responses={
             200: BranchMemberSerializer,
             400: openapi.Schema(
@@ -2016,71 +2292,6 @@ class TraineeBranchMemberUpdateView(GenericAPIView):
         branch_member = serializer.save()
         return Response(
             BranchMemberSerializer(branch_member).data,
-            status=status.HTTP_200_OK,
-        )
-
-
-# for update branch member from branch (branch)
-class BranchMemberUpdateView(GenericAPIView):
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
-    serializer_class = BranchMemberUpdateSerializer
-
-    @swagger_auto_schema(
-        tags=["clubs"],
-        operation_description="Update the details of a branch member",
-        request_body=BranchMemberUpdateSerializer,
-        responses={
-            200: BranchMemberSerializer,
-            400: openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                properties={
-                    "error": openapi.Schema(
-                        type=openapi.TYPE_OBJECT, description="Error messages"
-                    ),
-                },
-                example={"error": {"user_type": "This field is required"}},
-            ),
-        },
-        security=[{"Bearer": []}],
-        manual_parameters=[
-            openapi.Parameter(
-                "Authorization",
-                openapi.IN_HEADER,
-                description="Bearer <token>",
-                type=openapi.TYPE_STRING,
-                required=True,
-            ),
-        ],
-    )
-    def put(self, request, member_subscription_id):
-        owner = request.user
-        if not owner.is_owner():
-            return Response(
-                {"error": "You are not authorized to perform this action"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        print("reached here")
-        branch = Branch.objects.filter(owner=owner).first()
-        member_subscription = MemberSubscription.objects.get(id=member_subscription_id)
-        print("not reached here")
-        if not member_subscription.member.branch == branch:
-            return Response(
-                {"error": "Branch member not found"},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-        serializer = self.get_serializer(
-            member_subscription,
-            data=request.data,
-            partial=True,
-        )
-        print("reached here Now")
-        serializer.is_valid(raise_exception=True)
-        print("now here")
-        member_subscription = serializer.save()
-        print("reached here now")
-        return Response(
-            MemberSubscriptionSerializerTemp(member_subscription).data,
             status=status.HTTP_200_OK,
         )
 

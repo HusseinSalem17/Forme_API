@@ -414,10 +414,12 @@ class LogoutAPIView(GenericAPIView):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            print('logout serializer', serializer)
             return Response(
                 {"message": "Logout successfuly"},
-                status=status.HTTP_204_NO_CONTENT,
+                status=status.HTTP_200_OK,
             )
+            
         except serializers.ValidationError as e:
             return handle_validation_error(e)
         except Exception as e:

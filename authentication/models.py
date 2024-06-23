@@ -4,6 +4,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+from .utils import get_upload_path_user
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(
@@ -63,16 +65,11 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
-
         return self.create_user(
             username,
             email,
             password,
-            group_name="admins",
+            group_name="superusers",
             **extra_fields,
         )
 
@@ -94,7 +91,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(max_length=255, unique=True)
     date_of_birth = models.DateField(blank=True, null=True)
     profile_picture = models.ImageField(
-        upload_to="profile_pics/",
+        upload_to=get_upload_path_user,
         default="profile_pics/default.png",
     )
     gender = models.CharField(
@@ -125,8 +122,7 @@ class CustomUser(AbstractUser):
         }
 
     def check_group(self, group_name):
-        group_name = str(group_name + "s")
-        print("group_name Now", group_name)
+        group_name = group_name + "s"
         t = self.groups.filter(name=group_name).exists()
         print("t", t)
         return t
@@ -146,7 +142,7 @@ class CustomUser(AbstractUser):
         return self.groups.filter(name="branches").exists()
 
     def is_admin(self):
-        return self.groups.filter(name="admin").exists()
+        return self.groups.filter(name="admins").exists()
 
     def __str__(self):
         return (
@@ -157,7 +153,6 @@ class CustomUser(AbstractUser):
 class Location(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, default=0.0)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, default=0.0)
-    # Add a GenericForeignKey to link the reviews to the Trainer being rated
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
@@ -172,6 +167,21 @@ class Location(models.Model):
     def __str__(self):
         return f"{self.longitude}, {self.latitude} - {self.content_object}'s Location"
 
+    # Update the location if the object already exists
+    def save(self, *args, **kwargs):
+        if self.pk is None:
+            if Location.objects.filter(
+                content_type=self.content_type, object_id=self.object_id
+            ).exists():
+                existing_location = Location.objects.get(
+                    content_type=self.content_type, object_id=self.object_id
+                )
+                existing_location.longitude = self.longitude
+                existing_location.latitude = self.latitude
+                existing_location.save()
+                return
+        super().save(*args, **kwargs)
+
 
 class OTP(models.Model):
     email = models.EmailField(max_length=255, unique=True)
@@ -181,5 +191,3 @@ class OTP(models.Model):
 
     def __str__(self):
         return self.email
-
-
