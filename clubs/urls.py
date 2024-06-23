@@ -13,6 +13,7 @@ from .views import (
     BranchMemberDeleteView,
     BranchMemberJoinView,
     MemberSubscriptionUpdateView,
+    TimeDeleteView,
     TraineeBranchMemberUpdateView,
     BranchMembersCountView,
     BranchMembersView,
@@ -198,6 +199,11 @@ urlpatterns = [
         "branch-memeber-join/",
         BranchMemberJoinView.as_view(),
         name="branch_member_join",
+    ),
+    path(
+        "time-delete/<int:time_id>/",
+        TimeDeleteView.as_view(),
+        name="time_delete",
     ),
     path(
         "member-subscription-delete/<int:member_subscription_id>/",

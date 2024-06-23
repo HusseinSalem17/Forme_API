@@ -45,6 +45,7 @@ from .models import (
     NewTrainer,
     Subscription,
     SubscriptionPlan,
+    Time,
 )
 from rest_framework.response import Response
 from rest_framework import status
@@ -399,6 +400,7 @@ class BranchUpdateView(GenericAPIView):
             serializer = self.get_serializer(branch, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             branch = serializer.save()
+            print('data of branch', branch)
             return Response(
                 BranchDetailSerializer(branch).data, status=status.HTTP_200_OK
             )
@@ -1667,6 +1669,82 @@ class BranchSubscriptionDeleteView(GenericAPIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+# for time delete (club)
+class TimeDeleteView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    @swagger_auto_schema(
+        tags=["clubs"],
+        operation_description="Delete a time from the branch",
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Time deleted successfully",
+                    ),
+                },
+                example={"message": "Time deleted successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": {"user_type": "This field is required"}},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def delete(self, request, time_id):
+        try:
+            owner = request.user
+            if not owner.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            branch = Branch.objects.filter(owner=owner).first()
+            if not branch:
+                return Response(
+                    {"error": "Branch does not exist"}, status=status.HTTP_404_NOT_FOUND
+                )
+            time = Time.objects.filter(id=time_id).first()
+            if not time:
+                return Response(
+                    {"error": "Time not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            if time.day.branch == branch:
+                time.delete()
+            else:
+                return Response(
+                    {"error": "Time not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            return Response(
+                {"message": "Time deleted successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class BranchMembersCountView(GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -1778,7 +1856,7 @@ class MemberSubscriptionUpdateView(GenericAPIView):
                     {"error": "Branch member not found"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            print('request.data', request.data)
+            print("request.data", request.data)
             serializer = self.get_serializer(
                 member_subscription,
                 data=request.data,

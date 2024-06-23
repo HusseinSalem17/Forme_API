@@ -369,9 +369,11 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
 
 
 class TimeUpdateSerializer(serializers.ModelSerializer):
+    id= serializers.IntegerField(required=False)
     class Meta:
         model = Time
         fields = [
+            "id",
             "from_time",
             "to_time",
         ]
@@ -474,11 +476,13 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                     day = working_hour.get("day")
                     is_open = working_hour.get("is_open")
                     time_data = working_hour.get("day_time")
-                    working_hour_instance = WorkingHours.objects.get(day=day)
+                    working_hour_instance = WorkingHours.objects.get(day=day,branch=instance)
                     time_instance = Time.objects.filter(day=working_hour_instance)
                     for time_entry in time_data:
+                        print('time_entry', time_entry)
                         time_id = time_entry.get("id", None)
                         if time_id:
+                            print('enteredc heeererere')
                             # Update existing Time instance
                             time_instance = Time.objects.get(
                                 id=time_id, day=working_hour_instance
@@ -495,6 +499,7 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                             )
                     working_hour_instance.is_open = is_open
                     working_hour_instance.save()
+            
             instance.address = validated_data.get("address", instance.address)
             instance.details = validated_data.get("details", instance.details)
             instance.save()
