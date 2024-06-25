@@ -8,8 +8,8 @@ from trainings.models import Document, Trainee, Trainer
 from .models import OTP, CustomUser, Location
 
 from drf_extra_fields.fields import Base64ImageField
-import base64
-from django.core.files.base import ContentFile
+
+from django.conf import settings
 
 
 # For Register Screen
@@ -521,6 +521,12 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+        def to_representation(self, instance):
+            representation = super(CustomUserSerializer, self).to_representation(instance)
+            profile_picture = representation.get('profile_picture', None)
+            if profile_picture and not profile_picture.startswith('http'):
+                representation['profile_picture'] = settings.BASE_URL + profile_picture
+            return representation
 
 
 class CustomUserClubAddSerializer(serializers.ModelSerializer):

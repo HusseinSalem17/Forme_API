@@ -478,24 +478,32 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                     time_data = working_hour.get("day_time")
                     working_hour_instance = WorkingHours.objects.get(day=day,branch=instance)
                     time_instance = Time.objects.filter(day=working_hour_instance)
+                    # Inside the update method, within the working_hours processing loop
                     for time_entry in time_data:
                         print('time_entry', time_entry)
+                        from_time = time_entry.get("from_time")
+                        to_time = time_entry.get("to_time")
+                        # Ensure from_time is before or equal to to_time
+                        if from_time >= to_time:
+                            raise serializers.ValidationError("Start time must be before or equal to end time.")
                         time_id = time_entry.get("id", None)
+                        # Check if Time instance already exists with the same day, from_time, and to_time
+                        existing_time_instance = Time.objects.filter(day=working_hour_instance, from_time=from_time, to_time=to_time).first()
+                        if existing_time_instance and (time_id is None or existing_time_instance.id != time_id):
+                            raise serializers.ValidationError("Time already exists.")
                         if time_id:
-                            print('enteredc heeererere')
+                            print('entered here')
                             # Update existing Time instance
-                            time_instance = Time.objects.get(
-                                id=time_id, day=working_hour_instance
-                            )
-                            time_instance.from_time = time_entry.get("from_time")
-                            time_instance.to_time = time_entry.get("to_time")
+                            time_instance = Time.objects.get(id=time_id, day=working_hour_instance)
+                            time_instance.from_time = from_time
+                            time_instance.to_time = to_time
                             time_instance.save()
                         else:
                             # Create new Time instance
                             Time.objects.create(
                                 day=working_hour_instance,
-                                from_time=time_entry.get("from_time"),
-                                to_time=time_entry.get("to_time"),
+                                from_time=from_time,
+                                to_time=to_time,
                             )
                     working_hour_instance.is_open = is_open
                     working_hour_instance.save()

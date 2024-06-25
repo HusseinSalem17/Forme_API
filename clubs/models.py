@@ -370,6 +370,9 @@ class Time(models.Model):
         on_delete=models.CASCADE,
         related_name="day_time",
     )
+    
+    # class Meta:
+    #     unique_together = ("from_time", "to_time", "day")
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Call the "real" save() method.
