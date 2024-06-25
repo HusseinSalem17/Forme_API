@@ -24,6 +24,8 @@ from .models import (
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
+from django.conf import settings
+
 
 class WorkoutListSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
@@ -442,6 +444,14 @@ class ProgramListSerializer(serializers.ModelSerializer):
     def get_program_plans(self, obj):
         program_plans = ProgramPlan.objects.filter(program=obj).first()
         return ProgramPlanSerializer(program_plans).data if program_plans else None
+
+    def to_representation(self, instance):
+        representation = super(ProgramListSerializer, self).to_representation(instance)
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
+
+        return representation
 
 
 class ProgramPlanAddSerializer(serializers.ModelSerializer):
@@ -1562,5 +1572,3 @@ class ReviewUpdateSerializer(serializers.ModelSerializer):
         instance.comment = validated_data.get("comment", instance.comment)
         instance.save()
         return instance
-
-

@@ -507,6 +507,9 @@ class UpdatePreferenceTrainerSerializer(serializers.ModelSerializer):
 
 
 class CustomUserSerializer(serializers.ModelSerializer):
+    created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+    # updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+
     class Meta:
         model = CustomUser
         fields = [
@@ -519,16 +522,16 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "gender",
             "phone_number",
             "created_at",
-            "updated_at",
+            # "updated_at",
         ]
-        def to_representation(self, instance):
-            representation = super(CustomUserSerializer, self).to_representation(instance)
-            profile_picture = representation.get('profile_picture', None)
-            print('profile_picture', profile_picture)
-            if profile_picture and not profile_picture.startswith('http'):
-                print('settings.BASE_URL', settings.BASE_URL)
-                representation['profile_picture'] = settings.BASE_URL + profile_picture
-            return representation
+
+    def to_representation(self, instance):
+        representation = super(CustomUserSerializer, self).to_representation(instance)
+        profile_picture = representation.get("profile_picture", None)
+        if profile_picture and not profile_picture.startswith("http"):
+            representation["profile_picture"] = settings.BASE_URL + profile_picture
+        
+        return representation
 
 
 class CustomUserClubAddSerializer(serializers.ModelSerializer):
@@ -578,13 +581,14 @@ class CustomUserClubAddSerializer(serializers.ModelSerializer):
         validated_data.pop(
             "confirm_password"
         )  # Remove confirm_password before creating user
-        print('validated_data', validated_data)
+        print("validated_data", validated_data)
         user = CustomUser.objects.create_owner(**validated_data)
         return user
 
 
 class CustomUserUpdateSerializer(serializers.ModelSerializer):
     profile_picture = Base64ImageField(required=False)
+
     class Meta:
         model = CustomUser
         fields = [

@@ -153,7 +153,7 @@ urlpatterns = [
     path(
         "programs-home/",
         ProgramsTrainersHomeView.as_view(),
-        name="get-programs-trainers",
+        name="programs_trainer_list",
     ),
     path(
         "programs-list/",

@@ -1175,7 +1175,7 @@ class ProgramsTrainersHomeView(GenericAPIView):
             )
             if not trainers:
                 return Response(
-                    {"message": "No trainers found"}, status=status.HTTP_404_NOT_FOUND
+                    {"error": "No trainers found"}, status=status.HTTP_404_NOT_FOUND
                 )
             shuffle(trainers)
             return Response(
@@ -1184,7 +1184,7 @@ class ProgramsTrainersHomeView(GenericAPIView):
             )
         except Exception as e:
             return Response(
-                {"message": str(e)},
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
