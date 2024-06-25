@@ -524,7 +524,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
         def to_representation(self, instance):
             representation = super(CustomUserSerializer, self).to_representation(instance)
             profile_picture = representation.get('profile_picture', None)
+            print('profile_picture', profile_picture)
             if profile_picture and not profile_picture.startswith('http'):
+                print('settings.BASE_URL', settings.BASE_URL)
                 representation['profile_picture'] = settings.BASE_URL + profile_picture
             return representation
 
