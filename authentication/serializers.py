@@ -508,7 +508,7 @@ class UpdatePreferenceTrainerSerializer(serializers.ModelSerializer):
 
 class CustomUserSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
-    # updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
 
     class Meta:
         model = CustomUser
@@ -522,7 +522,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
             "gender",
             "phone_number",
             "created_at",
-            # "updated_at",
+            "updated_at",
         ]
 
     def to_representation(self, instance):
