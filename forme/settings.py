@@ -292,7 +292,7 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_ENABLE_UTC = True
 
-BASE_URL="https://forme-app-7pffc.ondigitalocean.app/"
+BASE_URL="https://forme-app-7pffc.ondigitalocean.app"
 # CELERY_BEAT_SCHEDULE = {
 #     "create-daily-attendance": {
 #         "task": "clubs.tasks.create_daily_attendance",

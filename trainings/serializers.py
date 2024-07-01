@@ -380,6 +380,14 @@ class TraineeProgramDetailSerializer(serializers.ModelSerializer):
             program_plans = ProgramPlan.objects.filter(program=obj)
         return ProgramPlanSerializer(program_plans, many=True).data
 
+    def to_representation(self, instance):
+        representation = super(Program, self).to_representation(instance)
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
+
+        return representation
+
 
 class TrainerProgramDetailSerializer(serializers.ModelSerializer):
     trainees = TrainerTraineeSerializer(many=True)
@@ -800,7 +808,14 @@ class TraineeWorkoutDetailSerializer(serializers.ModelSerializer):
             return WorkoutFileSerializer(workout_videos_files, many=True).data
         else:
             return WorkoutFileSerializer(workout_videos_files.first()).data
+    
+    def to_representation(self, instance):
+        representation = super(Workout, self).to_representation(instance)
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
 
+        return representation
 
 class TrainerWorkoutDetailSerializer(serializers.ModelSerializer):
     trainees = TraineeSerializer(many=True)

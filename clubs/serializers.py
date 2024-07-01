@@ -1,3 +1,4 @@
+from django.conf import settings
 from authentication.models import CustomUser, Location
 from authentication.serializers import (
     CustomUserClubAddSerializer,
@@ -369,7 +370,8 @@ class WorkingHoursSerializer(serializers.ModelSerializer):
 
 
 class TimeUpdateSerializer(serializers.ModelSerializer):
-    id= serializers.IntegerField(required=False)
+    id = serializers.IntegerField(required=False)
+
     class Meta:
         model = Time
         fields = [
@@ -400,7 +402,7 @@ class FacilitiesAddSerializer(serializers.ModelSerializer):
             "name",
             "icon",
         ]
-        
+
     def create(self, validated_data):
         icon = validated_data.get("icon")
         facilities = Facilities.objects.create(**validated_data)
@@ -476,25 +478,37 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                     day = working_hour.get("day")
                     is_open = working_hour.get("is_open")
                     time_data = working_hour.get("day_time")
-                    working_hour_instance = WorkingHours.objects.get(day=day,branch=instance)
+                    working_hour_instance = WorkingHours.objects.get(
+                        day=day, branch=instance
+                    )
                     time_instance = Time.objects.filter(day=working_hour_instance)
                     # Inside the update method, within the working_hours processing loop
                     for time_entry in time_data:
-                        print('time_entry', time_entry)
+                        print("time_entry", time_entry)
                         from_time = time_entry.get("from_time")
                         to_time = time_entry.get("to_time")
                         # Ensure from_time is before or equal to to_time
                         if from_time >= to_time:
-                            raise serializers.ValidationError("Start time must be before or equal to end time.")
+                            raise serializers.ValidationError(
+                                "Start time must be before or equal to end time."
+                            )
                         time_id = time_entry.get("id", None)
                         # Check if Time instance already exists with the same day, from_time, and to_time
-                        existing_time_instance = Time.objects.filter(day=working_hour_instance, from_time=from_time, to_time=to_time).first()
-                        if existing_time_instance and (time_id is None or existing_time_instance.id != time_id):
+                        existing_time_instance = Time.objects.filter(
+                            day=working_hour_instance,
+                            from_time=from_time,
+                            to_time=to_time,
+                        ).first()
+                        if existing_time_instance and (
+                            time_id is None or existing_time_instance.id != time_id
+                        ):
                             raise serializers.ValidationError("Time already exists.")
                         if time_id:
-                            print('entered here')
+                            print("entered here")
                             # Update existing Time instance
-                            time_instance = Time.objects.get(id=time_id, day=working_hour_instance)
+                            time_instance = Time.objects.get(
+                                id=time_id, day=working_hour_instance
+                            )
                             time_instance.from_time = from_time
                             time_instance.to_time = to_time
                             time_instance.save()
@@ -507,7 +521,7 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                             )
                     working_hour_instance.is_open = is_open
                     working_hour_instance.save()
-            
+
             instance.address = validated_data.get("address", instance.address)
             instance.details = validated_data.get("details", instance.details)
             instance.save()
@@ -665,7 +679,7 @@ class SubscriptionAddSerializer(serializers.ModelSerializer):
                     for key, value in subscription_plan.items():
                         setattr(s, key, value)
                     s.is_added = True
-                s.save()
+                    s.save()
             return subscription
 
 
@@ -974,6 +988,14 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
         if not data.get("username"):
             raise serializers.ValidationError("Username is required.")
         return data
+
+    def to_representation(self, instance):
+        representation = super(NewTrainer, self).to_representation(instance)
+        profile_picture = representation.get("profile_picture", None)
+        if profile_picture and not profile_picture.startswith("http"):
+            representation["profile_picture"] = settings.BASE_URL + profile_picture
+
+        return representation
 
 
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):

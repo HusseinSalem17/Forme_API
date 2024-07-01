@@ -1615,93 +1615,21 @@ class BranchUpdateViewTests(APITestCase):
 #         self.assertEqual(response.data, [])
 
 
-class BranchSubscriptionPlanDeleteViewTests(APITestCase):
-    def setUp(self):
-        self.user_owner = User.objects.create_owner(
-            username="owneruser",
-            email="owner@example.com",
-            password="password123",
-        )
-        self.user_non_owner = User.objects.create_user(
-            username="nonowneruser",
-            email="nonowner@example.com",
-            password="password123",
-        )
-
-        self.user_trainee = User.objects.create_trainee(
-            email="trainee@example.com",
-            password="password123",
-        )
-        self.club = Club.objects.create(
-            property_name="Test Club",
-            sport_field="Football",
-        )
-        self.branch = Branch.objects.create(
-            owner=self.user_owner,
-            club=self.club,
-            address="123 Test St",
-            details="Test details",
-        )
-        self.subscription = Subscription.objects.create(
-            title="Fitness",
-            price=100.00,
-            target_gender="male",
-            min_age=18,
-            max_age=40,
-            branch=self.branch,
-        )
-        self.subscription_plan = SubscriptionPlan.objects.get(
-            subscription=self.subscription,
-            duration=2,
-        )
-        self.url = reverse(
-            "branch_subscription_plan_delete",
-            kwargs={"subscription_plan_id": self.subscription_plan.id},
-        )
-
-        self.client.force_authenticate(user=self.user_owner)
-
-    def test_subscription_plan_delete_success(self):
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(
-            SubscriptionPlan.objects.filter(id=self.subscription_plan.id).exists()
-        )
-
-    def test_subscription_plan_delete_unauthorized(self):
-        self.client.force_authenticate(user=self.user_non_owner)
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("error", response.data)
-        self.assertEqual(
-            response.data["error"], "You are not authorized to perform this action"
-        )
-
-    def test_subscription_plan_delete_without_authentication(self):
-        self.client.logout()
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_subscription_plan_delete_invalid_subscription_plan(self):
-        self.subscription_plan.delete()
-        response = self.client.delete(self.url)
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertIn("error", response.data)
-        self.assertEqual(response.data["error"], "Subscription Plan not found")
-
-
-# class BranchSubscriptionAddViewTests(APITestCase):
+# class BranchSubscriptionPlanDeleteViewTests(APITestCase):
 #     def setUp(self):
-#         self.url = reverse("branch_subscription_add")
 #         self.user_owner = User.objects.create_owner(
 #             username="owneruser",
 #             email="owner@example.com",
 #             password="password123",
 #         )
-#         self.client.force_authenticate(user=self.user_owner)
 #         self.user_non_owner = User.objects.create_user(
 #             username="nonowneruser",
 #             email="nonowner@example.com",
+#             password="password123",
+#         )
+
+#         self.user_trainee = User.objects.create_trainee(
+#             email="trainee@example.com",
 #             password="password123",
 #         )
 #         self.club = Club.objects.create(
@@ -1714,58 +1642,130 @@ class BranchSubscriptionPlanDeleteViewTests(APITestCase):
 #             address="123 Test St",
 #             details="Test details",
 #         )
-#         self.subscription_data = {
-#             "title": "Fitness",
-#             "target_gender": "male",
-#             "price": 100.00,
-#             "min_age": 18,
-#             "max_age": 40,
-#             "subscription_plan": [
-#                 {
-#                     "duration": 2,
-#                     "price": 500,
-#                 }
-#             ],
-#         }
-
-#     def test_subscription_add_success(self):
-#         response = self.client.post(self.url, self.subscription_data, format="json")
-#         print("response.data right noewww", response.data)
-#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-#         subscription = Subscription.objects.get(branch=self.branch)
-#         subscription_plan = SubscriptionPlan.objects.get(
-#             subscription=subscription, duration=2
+#         self.subscription = Subscription.objects.create(
+#             title="Fitness",
+#             price=100.00,
+#             target_gender="male",
+#             min_age=18,
+#             max_age=40,
+#             branch=self.branch,
 #         )
-#         self.assertTrue(Subscription.objects.filter(branch=self.branch).exists())
-#         self.assertEqual(subscription_plan.price, 500)
-#         self.assertEqual(subscription_plan.duration, 2)
-#         self.assertEqual(subscription.title, "Fitness")
-#         all_subscription_plans = SubscriptionPlan.objects.filter(
-#             subscription=subscription
+#         self.subscription_plan = SubscriptionPlan.objects.get(
+#             subscription=self.subscription,
+#             duration=2,
 #         )
-#         print("all_subscription_plans", all_subscription_plans.values())
-#         self.assertEqual(all_subscription_plans.count(), 12)
+#         self.url = reverse(
+#             "branch_subscription_plan_delete",
+#             kwargs={"subscription_plan_id": self.subscription_plan.id},
+#         )
 
-#     def test_subscription_add_unauthorized(self):
+#         self.client.force_authenticate(user=self.user_owner)
+
+#     def test_subscription_plan_delete_success(self):
+#         response = self.client.delete(self.url)
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertFalse(
+#             SubscriptionPlan.objects.filter(id=self.subscription_plan.id).exists()
+#         )
+
+#     def test_subscription_plan_delete_unauthorized(self):
 #         self.client.force_authenticate(user=self.user_non_owner)
-#         response = self.client.post(self.url, self.subscription_data, format="json")
+#         response = self.client.delete(self.url)
 #         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 #         self.assertIn("error", response.data)
 #         self.assertEqual(
 #             response.data["error"], "You are not authorized to perform this action"
 #         )
 
-#     def test_subscription_add_without_authentication(self):
+#     def test_subscription_plan_delete_without_authentication(self):
 #         self.client.logout()
-#         response = self.client.post(self.url, self.subscription_data, format="json")
+#         response = self.client.delete(self.url)
 #         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-#     def test_subscription_add_invalid_data(self):
-#         invalid_data = self.subscription_data.copy()
-#         invalid_data["title"] = ""
-#         response = self.client.post(self.url, invalid_data, format="json")
-#         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+#     def test_subscription_plan_delete_invalid_subscription_plan(self):
+#         self.subscription_plan.delete()
+#         response = self.client.delete(self.url)
+#         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 #         self.assertIn("error", response.data)
+#         self.assertEqual(response.data["error"], "Subscription Plan not found")
+
+
+class BranchSubscriptionAddViewTests(APITestCase):
+    def setUp(self):
+        self.url = reverse("branch_subscription_add")
+        self.user_owner = User.objects.create_owner(
+            username="owneruser",
+            email="owner@example.com",
+            password="password123",
+        )
+        self.client.force_authenticate(user=self.user_owner)
+        self.user_non_owner = User.objects.create_user(
+            username="nonowneruser",
+            email="nonowner@example.com",
+            password="password123",
+        )
+        self.club = Club.objects.create(
+            property_name="Test Club",
+            sport_field="Football",
+        )
+        self.branch = Branch.objects.create(
+            owner=self.user_owner,
+            club=self.club,
+            address="123 Test St",
+            details="Test details",
+        )
+        self.subscription_data = {
+            "title": "Fitness",
+            "target_gender": "male",
+            "price": 100.00,
+            "min_age": 18,
+            "max_age": 40,
+            "subscription_plan": [
+                {
+                    "duration": 2,
+                    "price": 500,
+                }
+            ],
+        }
+
+    def test_subscription_add_success(self):
+        response = self.client.post(self.url, self.subscription_data, format="json")
+        print("response.data right noewww", response.data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        subscription = Subscription.objects.get(branch=self.branch)
+        subscription_plan = SubscriptionPlan.objects.get(
+            subscription=subscription, duration=2
+        )
+        self.assertTrue(Subscription.objects.filter(branch=self.branch).exists())
+        self.assertEqual(subscription_plan.price, 500)
+        self.assertEqual(subscription_plan.duration, 2)
+        self.assertEqual(subscription.title, "Fitness")
+        all_subscription_plans = SubscriptionPlan.objects.filter(
+            subscription=subscription
+        )
+        print("all_subscription_plans", all_subscription_plans.values())
+        self.assertEqual(all_subscription_plans.count(), 12)
+
+    def test_subscription_add_unauthorized(self):
+        self.client.force_authenticate(user=self.user_non_owner)
+        response = self.client.post(self.url, self.subscription_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("error", response.data)
+        self.assertEqual(
+            response.data["error"], "You are not authorized to perform this action"
+        )
+
+    def test_subscription_add_without_authentication(self):
+        self.client.logout()
+        response = self.client.post(self.url, self.subscription_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_subscription_add_invalid_data(self):
+        invalid_data = self.subscription_data.copy()
+        invalid_data["title"] = ""
+        response = self.client.post(self.url, invalid_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
 
 
 # class BranchSubscriptionUpdateViewTests(APITestCase):
