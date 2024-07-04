@@ -177,7 +177,7 @@ class SubscriptionPlan(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.duration} months"
+        return f"{self.duration} months - {self.subscription}"
 
     class Meta:
         unique_together = ("duration", "subscription")

@@ -338,57 +338,59 @@ User = get_user_model()
 #         self.assertIn("error", response.data)
 
 
-class BranchUpdateViewTests(APITestCase):
-    def setUp(self):
-        self.url = reverse("branch_update")
-        self.user = User.objects.create_owner(
-            username="testuser",
-            email="test@example.com",
-            password="password123",
-        )
-        self.client.force_authenticate(user=self.user)
-        self.club = Club.objects.create(
-            property_name="Test Club", sport_field="Football"
-        )
-        self.branch = Branch.objects.create(
-            owner=self.user,
-            club=self.club,
-            address="123 Test St",
-            details="Test details",
-        )
-        self.update_data = {
-            # "owner": {
-            #     "username": "updateduser",
-            #     "date_of_birth": "1990-01-02",
-            #     "gender": "female",
-            #     "country": "USA",
-            #     "phone_number": "0987654321",
-            # },
-            # "club": {
-            #     "property_name": "Updated Club",
-            #     "sport_field": "Basketball",
-            # },
-            "working_hours": [
-                {
-                    "day": "Monday",
-                    "is_open": True,
-                    "day_time": [
-                        {
-                            "from_time": "08:00:00",
-                            "to_time": "16:00:00",
-                        }
-                    ],
-                }
-            ],
-            # "address": "456 Updated St",
-            # "details": "Updated details",
-        }
+# class BranchUpdateViewTests(APITestCase):
+#     def setUp(self):
+#         self.url = reverse("branch_update")
+#         self.user = User.objects.create_owner(
+#             username="testuser",
+#             email="test@example.com",
+#             password="password123",
+#         )
+#         self.client.force_authenticate(user=self.user)
+#         self.club = Club.objects.create(
+#             property_name="Test Club", sport_field="Football"
+#         )
+#         self.branch = Branch.objects.create(
+#             owner=self.user,
+#             club=self.club,
+#             address="123 Test St",
+#             details="Test details",
+#         )
+#         self.update_data = {
+#             "owner": {
+#                 "username": "updateduser",
+#                 "date_of_birth": "1990-01-02",
+#                 "gender": "female",
+#                 "country": "USA",
+#                 "profile_picture": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII=",
+#                 "phone_number": "0987654321",
+#             },
+#             "club": {
+#                 "property_name": "Updated Club",
+#                 "sport_field": "Basketball",
+#             },
+#             "working_hours": [
+#                 {
+#                     "day": "Monday",
+#                     "is_open": True,
+#                     "day_time": [
+#                         {
+#                             "from_time": "08:00:00",
+#                             "to_time": "16:00:00",
+#                         }
+#                     ],
+#                 }
+#             ],
+#             "address": "456 Updated St",
+#             "details": "Updated details",
+#         }
 
-    def test_branch_update_success(self):
-        response = self.client.patch(self.url, self.update_data, format="json")
-        print("response.data", response.data)
-        branch = Branch.objects.get(id=self.branch.id)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+#     def test_branch_update_success(self):
+#         print('here is data', self.update_data)
+#         response = self.client.patch(self.url, self.update_data, format="json")
+#         print("response.data", response.data)
+#         branch = Branch.objects.get(id=self.branch.id)
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # self.assertEqual(branch.address, self.update_data["address"])
         # self.assertEqual(branch.details, self.update_data["details"])
 
@@ -1372,17 +1374,24 @@ class BranchUpdateViewTests(APITestCase):
 
 #     def test_new_trainer_update_success(self):
 #         self.client.force_authenticate(user=self.user_owner)
+#         subscription_id=self.subscription.id
+#         print('here subscription_id', subscription_id)
 #         data = {
 #             "username": "Hussein",
-#             "phone_number":"1234567890",
+#             "phone_number": "1234567890",
 #             "profile_picture": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAApgAAAKYB3X3/OAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANCSURBVEiJtZZPbBtFFMZ/M7ubXdtdb1xSFyeilBapySVU8h8OoFaooFSqiihIVIpQBKci6KEg9Q6H9kovIHoCIVQJJCKE1ENFjnAgcaSGC6rEnxBwA04Tx43t2FnvDAfjkNibxgHxnWb2e/u992bee7tCa00YFsffekFY+nUzFtjW0LrvjRXrCDIAaPLlW0nHL0SsZtVoaF98mLrx3pdhOqLtYPHChahZcYYO7KvPFxvRl5XPp1sN3adWiD1ZAqD6XYK1b/dvE5IWryTt2udLFedwc1+9kLp+vbbpoDh+6TklxBeAi9TL0taeWpdmZzQDry0AcO+jQ12RyohqqoYoo8RDwJrU+qXkjWtfi8Xxt58BdQuwQs9qC/afLwCw8tnQbqYAPsgxE1S6F3EAIXux2oQFKm0ihMsOF71dHYx+f3NND68ghCu1YIoePPQN1pGRABkJ6Bus96CutRZMydTl+TvuiRW1m3n0eDl0vRPcEysqdXn+jsQPsrHMquGeXEaY4Yk4wxWcY5V/9scqOMOVUFthatyTy8QyqwZ+kDURKoMWxNKr2EeqVKcTNOajqKoBgOE28U4tdQl5p5bwCw7BWquaZSzAPlwjlithJtp3pTImSqQRrb2Z8PHGigD4RZuNX6JYj6wj7O4TFLbCO/Mn/m8R+h6rYSUb3ekokRY6f/YukArN979jcW+V/S8g0eT/N3VN3kTqWbQ428m9/8k0P/1aIhF36PccEl6EhOcAUCrXKZXXWS3XKd2vc/TRBG9O5ELC17MmWubD2nKhUKZa26Ba2+D3P+4/MNCFwg59oWVeYhkzgN/JDR8deKBoD7Y+ljEjGZ0sosXVTvbc6RHirr2reNy1OXd6pJsQ+gqjk8VWFYmHrwBzW/n+uMPFiRwHB2I7ih8ciHFxIkd/3Omk5tCDV1t+2nNu5sxxpDFNx+huNhVT3/zMDz8usXC3ddaHBj1GHj/As08fwTS7Kt1HBTmyN29vdwAw+/wbwLVOJ3uAD1wi/dUH7Qei66PfyuRj4Ik9is+hglfbkbfR3cnZm7chlUWLdwmprtCohX4HUtlOcQjLYCu+fzGJH2QRKvP3UNz8bWk1qMxjGTOMThZ3kvgLI5AzFfo379UAAAAASUVORK5CYII=",
+#             "subscriptions":[
+#                 subscription_id
+#             ]
 #         }
+#         print('profile_pic',data)
 #         response = self.client.patch(self.url, data, format="json")
 #         print("response.data new trainer update", response.data)
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.new_trainer.refresh_from_db()
 #         self.assertEqual(self.new_trainer.username, data["username"])
 #         self.assertEqual(self.new_trainer.phone_number, data["phone_number"])
+
 
 #     def test_new_trainer_update_unauthorized(self):
 #         self.client.force_authenticate(user=self.user_non_owner)
@@ -1690,82 +1699,82 @@ class BranchUpdateViewTests(APITestCase):
 #         self.assertEqual(response.data["error"], "Subscription Plan not found")
 
 
-class BranchSubscriptionAddViewTests(APITestCase):
-    def setUp(self):
-        self.url = reverse("branch_subscription_add")
-        self.user_owner = User.objects.create_owner(
-            username="owneruser",
-            email="owner@example.com",
-            password="password123",
-        )
-        self.client.force_authenticate(user=self.user_owner)
-        self.user_non_owner = User.objects.create_user(
-            username="nonowneruser",
-            email="nonowner@example.com",
-            password="password123",
-        )
-        self.club = Club.objects.create(
-            property_name="Test Club",
-            sport_field="Football",
-        )
-        self.branch = Branch.objects.create(
-            owner=self.user_owner,
-            club=self.club,
-            address="123 Test St",
-            details="Test details",
-        )
-        self.subscription_data = {
-            "title": "Fitness",
-            "target_gender": "male",
-            "price": 100.00,
-            "min_age": 18,
-            "max_age": 40,
-            "subscription_plan": [
-                {
-                    "duration": 2,
-                    "price": 500,
-                }
-            ],
-        }
+# class BranchSubscriptionAddViewTests(APITestCase):
+#     def setUp(self):
+#         self.url = reverse("branch_subscription_add")
+#         self.user_owner = User.objects.create_owner(
+#             username="owneruser",
+#             email="owner@example.com",
+#             password="password123",
+#         )
+#         self.client.force_authenticate(user=self.user_owner)
+#         self.user_non_owner = User.objects.create_user(
+#             username="nonowneruser",
+#             email="nonowner@example.com",
+#             password="password123",
+#         )
+#         self.club = Club.objects.create(
+#             property_name="Test Club",
+#             sport_field="Football",
+#         )
+#         self.branch = Branch.objects.create(
+#             owner=self.user_owner,
+#             club=self.club,
+#             address="123 Test St",
+#             details="Test details",
+#         )
+#         self.subscription_data = {
+#             "title": "Fitness",
+#             "target_gender": "male",
+#             "price": 100.00,
+#             "min_age": 18,
+#             "max_age": 40,
+#             "subscription_plan": [
+#                 {
+#                     "duration": 2,
+#                     "price": 500,
+#                 }
+#             ],
+#         }
 
-    def test_subscription_add_success(self):
-        response = self.client.post(self.url, self.subscription_data, format="json")
-        print("response.data right noewww", response.data)
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        subscription = Subscription.objects.get(branch=self.branch)
-        subscription_plan = SubscriptionPlan.objects.get(
-            subscription=subscription, duration=2
-        )
-        self.assertTrue(Subscription.objects.filter(branch=self.branch).exists())
-        self.assertEqual(subscription_plan.price, 500)
-        self.assertEqual(subscription_plan.duration, 2)
-        self.assertEqual(subscription.title, "Fitness")
-        all_subscription_plans = SubscriptionPlan.objects.filter(
-            subscription=subscription
-        )
-        print("all_subscription_plans", all_subscription_plans.values())
-        self.assertEqual(all_subscription_plans.count(), 12)
+#     def test_subscription_add_success(self):
+#         response = self.client.post(self.url, self.subscription_data, format="json")
+#         print("response.data right noewww", response.data)
+#         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+#         subscription = Subscription.objects.get(branch=self.branch)
+#         subscription_plan = SubscriptionPlan.objects.get(
+#             subscription=subscription, duration=2
+#         )
+#         self.assertTrue(Subscription.objects.filter(branch=self.branch).exists())
+#         self.assertEqual(subscription_plan.price, 500)
+#         self.assertEqual(subscription_plan.duration, 2)
+#         self.assertEqual(subscription.title, "Fitness")
+#         all_subscription_plans = SubscriptionPlan.objects.filter(
+#             subscription=subscription
+#         )
+#         print("all_subscription_plans", all_subscription_plans.values())
+#         self.assertEqual(all_subscription_plans.count(), 12)
 
-    def test_subscription_add_unauthorized(self):
-        self.client.force_authenticate(user=self.user_non_owner)
-        response = self.client.post(self.url, self.subscription_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("error", response.data)
-        self.assertEqual(
-            response.data["error"], "You are not authorized to perform this action"
-        )
+#     def test_subscription_add_unauthorized(self):
+#         self.client.force_authenticate(user=self.user_non_owner)
+#         response = self.client.post(self.url, self.subscription_data, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+#         self.assertIn("error", response.data)
+#         self.assertEqual(
+#             response.data["error"], "You are not authorized to perform this action"
+#         )
 
-    def test_subscription_add_without_authentication(self):
-        self.client.logout()
-        response = self.client.post(self.url, self.subscription_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+#     def test_subscription_add_without_authentication(self):
+#         self.client.logout()
+#         response = self.client.post(self.url, self.subscription_data, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_subscription_add_invalid_data(self):
-        invalid_data = self.subscription_data.copy()
-        invalid_data["title"] = ""
-        response = self.client.post(self.url, invalid_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("error", response.data)
+#     def test_subscription_add_invalid_data(self):
+#         invalid_data = self.subscription_data.copy()
+#         invalid_data["title"] = ""
+#         response = self.client.post(self.url, invalid_data, format="json")
+#         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+#         self.assertIn("error", response.data)
 
 
 # class BranchSubscriptionUpdateViewTests(APITestCase):

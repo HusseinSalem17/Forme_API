@@ -93,6 +93,8 @@ class CustomUser(AbstractUser):
     profile_picture = models.ImageField(
         upload_to=get_upload_path_user,
         default="profile_pics/default.png",
+        max_length=2048,  # Increased max_length
+
     )
     gender = models.CharField(
         max_length=6,

@@ -2,6 +2,7 @@ from django.conf import settings
 from authentication.models import CustomUser, Location
 from authentication.serializers import (
     CustomUserClubAddSerializer,
+    CustomUserClubUpdateSerializer,
     CustomUserUpdateSerializer,
     CustomUserSerializer,
     LocationSerializer,
@@ -36,8 +37,6 @@ from django.db import transaction
 
 from .utils import calculate_end_date
 
-import base64
-from django.core.files.base import ContentFile
 from drf_extra_fields.fields import Base64ImageField
 
 
@@ -171,14 +170,19 @@ class TrainerExistingAddSerializer(serializers.ModelSerializer):
 
 
 class TrainerExistingUpdateSerializer(serializers.ModelSerializer):
+    subscriptions = serializers.PrimaryKeyRelatedField(
+        queryset=Subscription.objects.all(),
+        many=True,
+        required=True,
+    )
 
     class Meta:
         model = BranchTrainer
         fields = ["subscriptions"]
 
     def update(self, instance, validated_data):
-        subscription = validated_data.get("subscriptions")
-        instance.subscription = subscription
+        if "subscriptions" in validated_data:
+            instance.subscriptions.set(validated_data["subscriptions"])
         instance.save()
         return instance
 
@@ -310,6 +314,7 @@ class BranchGallerySerializer(serializers.ModelSerializer):
     class Meta:
         model = BranchGallery
         fields = [
+            "id",
             "gallery",
         ]
 
@@ -410,7 +415,7 @@ class FacilitiesAddSerializer(serializers.ModelSerializer):
 
 
 class BranchUpdateSerializer(serializers.ModelSerializer):
-    owner = CustomUserUpdateSerializer(required=False)
+    owner = CustomUserClubUpdateSerializer(required=False)
     club = ClubUpdateSerializer(required=False)
     facilities = FacilitiesAddSerializer(required=False, many=True)
     working_hours = WorkingHoursUpdateSerializer(required=False, many=True)
@@ -447,7 +452,10 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
         }
 
     def update(self, instance, validated_data):
+        request_data = self.context["request"].data
+        print("request_data hereee", request_data)
         owner_data = validated_data.pop("owner", None)
+        print("owner_data hereee", owner_data)
         club_data = validated_data.pop("club", None)
         facilities = validated_data.pop("facilities", None)
         working_hours = validated_data.pop("working_hours", None)
@@ -457,8 +465,23 @@ class BranchUpdateSerializer(serializers.ModelSerializer):
                 owner_serializer = CustomUserUpdateSerializer(
                     instance.owner, data=owner_data, partial=True
                 )
+                print("owner data", owner_data)
+                print("owner instance", instance.owner.profile_picture)
+                print("owner instance", instance.owner.country)
+                print("owner instance", instance.owner.phone_number)
+                print("owner instance", instance.owner.username)
+
+                # Pop profile_picture from owner_data
+                profile_picture = owner_data.pop("profile_picture", None)
+
+                print("here is owner_serializer", owner_serializer)
                 if owner_serializer.is_valid(raise_exception=True):
                     owner_serializer.update(instance.owner, owner_data)
+
+                    # Update profile_picture if it exists in owner_data
+                    if profile_picture:
+                        instance.owner.profile_picture = profile_picture
+                        instance.owner.save()
 
             if club_data is not None:
                 club_serializer = ClubUpdateSerializer(
@@ -998,8 +1021,37 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
         return representation
 
 
+class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
+    id = serializers.IntegerField(required=False)
+
+    class Meta:
+        model = Subscription
+        fields = [
+            "id",
+            "title",
+            "price",
+            "max_members",
+        ]
+        extra_kwargs = {
+            "title": {
+                "required": False,
+            },
+            "price": {
+                "required": False,
+            },
+            "max_members": {
+                "required": False,
+            },
+        }
+
+
 class NewTrainerUpdateSerializer(serializers.ModelSerializer):
     profile_picture = Base64ImageField(required=False)
+    subscriptions = serializers.PrimaryKeyRelatedField(
+        queryset=Subscription.objects.all(),
+        many=True,
+        required=False,
+    )
 
     class Meta:
         model = NewTrainer
@@ -1026,15 +1078,25 @@ class NewTrainerUpdateSerializer(serializers.ModelSerializer):
         }
 
     def update(self, instance, validated_data):
+        print("vaildated_data", validated_data)
         instance.email = validated_data.get("email", instance.email)
         instance.username = validated_data.get("username", instance.username)
         instance.phone_number = validated_data.get(
             "phone_number", instance.phone_number
         )
         instance.profile_picture = validated_data.get(
-            "profile_picture", instance.profile_picture
+            "picture", instance.profile_picture
         )
+
+        # Remove subscriptions from validated_data if it exists
+        subscriptions_data = validated_data.pop("subscriptions", None)
+
         instance.save()
+
+        # If subscriptions_data is not None, update the subscriptions using set()
+        if subscriptions_data is not None:
+            instance.subscriptions.set(subscriptions_data)
+
         return instance
 
 
@@ -1060,6 +1122,14 @@ class NewTrainerSerializer(serializers.ModelSerializer):
     def get_subscription(self, obj):
         subscription = Subscription.objects.filter(branch=obj)
         return SubscriptionSummarySerializer(subscription, many=True).data
+
+    def to_representation(self, instance):
+        representation = super(NewTrainer, self).to_representation(instance)
+        profile_picture = representation.get("profile_picture", None)
+        if profile_picture and not profile_picture.startswith("http"):
+            representation["profile_picture"] = settings.BASE_URL + profile_picture
+
+        return representation
 
 
 class TraineeNewTrainerSerializer(serializers.ModelSerializer):
@@ -1110,30 +1180,6 @@ class TraineeBranchTrainerSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-
-class SubscriptionUpdateSeralizer(serializers.ModelSerializer):
-    id = serializers.IntegerField(required=False)
-
-    class Meta:
-        model = Subscription
-        fields = [
-            "id",
-            "title",
-            "price",
-            "max_members",
-        ]
-        extra_kwargs = {
-            "title": {
-                "required": False,
-            },
-            "price": {
-                "required": False,
-            },
-            "max_members": {
-                "required": False,
-            },
-        }
 
 
 class BranchTrainerUpdateSerializer(serializers.ModelSerializer):

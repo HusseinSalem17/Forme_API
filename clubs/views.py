@@ -1,5 +1,6 @@
 from authentication.models import CustomUser
 
+from authentication.serializers import CustomUserSerializer, CustomUserUpdateSerializer
 from forme.utils import handle_validation_error
 from trainings.serializers import (
     PaymentAddSerializer,
@@ -33,6 +34,7 @@ from .serializers import (
     SubscriptionSerializer,
     TraineeBranchDetailSerializer,
     TrainerExistingAddSerializer,
+    TrainerExistingUpdateSerializer,
 )
 from .models import (
     Attendance,
@@ -396,13 +398,13 @@ class BranchUpdateView(GenericAPIView):
                     {"error": "Branch does not exist"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-
-            serializer = self.get_serializer(branch, data=request.data, partial=True)
+            print('data of request', request.data)
+            serializer = self.get_serializer(branch, data=request.data, partial=True,)
             serializer.is_valid(raise_exception=True)
-            branch = serializer.save()
+            user = serializer.save()
             print('data of branch', branch)
             return Response(
-                BranchDetailSerializer(branch).data, status=status.HTTP_200_OK
+                BranchDetailSerializer(user).data, status=status.HTTP_200_OK
             )
         except serializers.ValidationError as e:
             return handle_validation_error(e)
@@ -534,14 +536,14 @@ class ExistingTrainerDeleteView(GenericAPIView):
 
 # for existing trainer update (club)
 class ExistingTrainerUpdateView(GenericAPIView):
-    serializer_class = BranchTrainerUpdateSerializer
+    serializer_class = TrainerExistingUpdateSerializer
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         tags=["clubs"],
         operation_id="Update Existing Trainer",
         operation_description="Update the details of an existing trainer",
-        request_body=BranchTrainerUpdateSerializer,
+        request_body=TrainerExistingUpdateSerializer,
         responses={
             200: BranchTrainerSerializer(),
             400: openapi.Schema(
@@ -648,6 +650,8 @@ class BranchGalleryAddView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
     serializer_class = BranchGalleryAddSerializer
+    
+    
 
     @swagger_auto_schema(
         tags=["clubs"],
@@ -1002,6 +1006,7 @@ class NewTrainerAddView(GenericAPIView):
     serializer_class = NewTrainerAddSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+    
 
     @swagger_auto_schema(
         tags=["clubs"],

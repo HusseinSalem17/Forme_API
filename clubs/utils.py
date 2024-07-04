@@ -30,6 +30,14 @@ def calculate_end_date(duration, start_date):
 #         base64.b64decode(_img_str), name="club_documents/{}.{}".format(name, ext)
 #     )
 
+
+def base64_file(data, name=None):
+    _format, _img_str = data.split(';base64,')
+    _name, ext = _format.split('/')
+    if not name:
+        name = _name.split(":")[-1]
+    return ContentFile(base64.b64decode(_img_str), name='{}.{}'.format(name, ext))
+
 def get_upload_path_for_branch_gallery(instance, filename):
     # Use the sanitize_path_component function to sanitize the property_name
     safe_property_name = sanitize_path_component(instance.branch.club.property_name)

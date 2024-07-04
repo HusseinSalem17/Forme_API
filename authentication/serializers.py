@@ -530,7 +530,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         profile_picture = representation.get("profile_picture", None)
         if profile_picture and not profile_picture.startswith("http"):
             representation["profile_picture"] = settings.BASE_URL + profile_picture
-        
+
         return representation
 
 
@@ -621,6 +621,44 @@ class CustomUserUpdateSerializer(serializers.ModelSerializer):
         )
         instance.save()
         return instance
+
+
+class CustomUserClubUpdateSerializer(serializers.ModelSerializer):
+    profile_picture =Base64ImageField(required=False)
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            "username",
+            "date_of_birth",
+            "profile_picture",
+            "gender",
+            "country",
+            "phone_number",
+        ]
+        extra_kwargs = {
+            "username": {"required": False},
+            "date_of_birth": {"required": False},
+            "profile_picture": {"required": False},
+            "country": {"required": False},
+            "phone_number": {"required": False},
+        }
+
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get("username", instance.username)
+        instance.date_of_birth = validated_data.get(
+            "date_of_birth", instance.date_of_birth
+        )
+        instance.profile_picture = validated_data.get(
+            "profile_picture", instance.profile_picture
+        )
+        instance.country = validated_data.get("country", instance.country)
+        instance.phone_number = validated_data.get(
+            "phone_number", instance.phone_number
+        )
+        instance.save()
+        return instance
+
 
 
 # class ResetPasswordEmailRequestSerializer(serializers.Serializer):
