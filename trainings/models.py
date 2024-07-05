@@ -333,7 +333,7 @@ class Workout(models.Model):
         blank=True,
         null=True,
     )
-    max_trainees = models.PositiveIntegerField(null=True, blank=True)
+    # max_trainees = models.PositiveIntegerField(null=True, blank=True)
     current_trainees_count = models.PositiveIntegerField(default=0)
     trainer = models.ForeignKey(
         Trainer,
