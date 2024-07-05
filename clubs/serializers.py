@@ -1752,13 +1752,9 @@ class ContactUsAddSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactUs
         fields = [
-            "subject",
             "message",
         ]
         extra_kwargs = {
-            "subject": {
-                "required": False,
-            },
             "message": {
                 "required": True,
             },

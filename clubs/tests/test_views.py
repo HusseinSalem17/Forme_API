@@ -321,7 +321,7 @@ class ConctactUsViewTests(APITestCase):
 
     def test_contact_us_success(self):
         self.client.force_authenticate(user=self.user_owner)
-        data = {"subject": "Hi", "message": "This is a test message."}
+        data = {"message": "This is a test message."}
         response = self.client.post(self.url, data, format="json")
         print("response contact", response.data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
