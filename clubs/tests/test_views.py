@@ -182,36 +182,36 @@ User = get_user_model()
 #         self.assertIn("error", response.data)
 
 
-# class BranchDetailViewTests(APITestCase):
-#     def setUp(self):
-#         self.url = reverse("branch_detail")
-#         self.user_non_owner = User.objects.create_user(
-#             username="nonowneruser",
-#             email="nonowner@example.com",
-#             password="password123",
-#         )
-#         self.user_owner = User.objects.create_owner(
-#             username="testuser",
-#             email="test@example.com",
-#             password="password123",
-#         )
-#         self.club = Club.objects.create(
-#             property_name="Test Club", sport_field="Football"
-#         )
-#         self.branch = Branch.objects.create(
-#             owner=self.user_owner,
-#             club=self.club,
-#             address="123 Test St",
-#             details="Test details",
-#         )
+class BranchDetailViewTests(APITestCase):
+    def setUp(self):
+        self.url = reverse("branch_detail")
+        self.user_non_owner = User.objects.create_user(
+            username="nonowneruser",
+            email="nonowner@example.com",
+            password="password123",
+        )
+        self.user_owner = User.objects.create_owner(
+            username="testuser",
+            email="test@example.com",
+            password="password123",
+        )
+        self.club = Club.objects.create(
+            property_name="Test Club", sport_field="Football"
+        )
+        self.branch = Branch.objects.create(
+            owner=self.user_owner,
+            club=self.club,
+            address="123 Test St",
+            details="Test details",
+        )
 
-#     def test_branch_detail_success(self):
-#         self.client.force_authenticate(user=self.user_owner)
-#         response = self.client.get(self.url)
-#         print('here detail response.data', response.data)
-#         self.assertEqual(response.status_code, status.HTTP_200_OK)
-#         self.assertEqual(response.data["address"], self.branch.address)
-#         self.assertEqual(response.data["details"], self.branch.details)
+    def test_branch_detail_success(self):
+        self.client.force_authenticate(user=self.user_owner)
+        response = self.client.get(self.url)
+        # print('here detail response.data', response.data)
+        # self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # self.assertEqual(response.data["address"], self.branch.address)
+        # self.assertEqual(response.data["details"], self.branch.details)
 
 #     def test_branch_detail_unauthorized(self):
 #         self.client.force_authenticate(user=self.user_non_owner)
