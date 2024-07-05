@@ -1739,7 +1739,6 @@ class ContactUsSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "email",
-            "subject",
             "message",
             "created_at",
         ]
@@ -1769,11 +1768,10 @@ class ContactUsAddSerializer(serializers.ModelSerializer):
         request = self.context["request"]
         user = request.user
         branch = Branch.objects.get(owner=user)
-        subject = validated_data.get("subject")
         message = validated_data.get("message")
         if not branch:
             raise serializers.ValidationError({"branch": "Branch not found"})
-        return ContactUs.objects.create(branch=branch, subject=subject, message=message)
+        return ContactUs.objects.create(branch=branch,  message=message)
 
 
 class ClubsListSerializer(serializers.ModelSerializer):
