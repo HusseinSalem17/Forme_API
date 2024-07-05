@@ -47,6 +47,14 @@ class WorkoutListSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def to_representation(self, instance):
+        representation = super(WorkoutListSerializer, self).to_representation(instance)
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
+
+        return representation
+
 
 class TrainerTraineeSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer()
@@ -250,12 +258,8 @@ class TansformationUpdateSerializer(serializers.ModelSerializer):
         }
 
     def update(self, instance, validated_data):
-        instance.before_picture = validated_data.get(
-            "before_picture", instance.before_picture
-        )
-        instance.after_picture = validated_data.get(
-            "after_picture", instance.after_picture
-        )
+        instance.file = validated_data.get("file", instance.file)
+
         instance.details = validated_data.get("details", instance.details)
         instance.save()
         return instance
@@ -427,6 +431,16 @@ class TrainerProgramDetailSerializer(serializers.ModelSerializer):
         else:
             program_plans = ProgramPlan.objects.filter(program=obj)
         return ProgramPlanSerializer(program_plans, many=True).data
+
+    def to_representation(self, instance):
+        representation = super(TrainerProgramDetailSerializer, self).to_representation(
+            instance
+        )
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
+
+        return representation
 
 
 class ProgramListSerializer(serializers.ModelSerializer):
@@ -868,6 +882,16 @@ class TrainerWorkoutDetailSerializer(serializers.ModelSerializer):
     def get_workout_videos_files(self, obj):
         workout_videos_files = WorkoutFile.objects.filter(workout=obj)
         return WorkoutFileSerializer(workout_videos_files, many=True).data
+
+    def to_representation(self, instance):
+        representation = super(TrainerWorkoutDetailSerializer, self).to_representation(
+            instance
+        )
+        picture = representation.get("picture", None)
+        if picture and not picture.startswith("http"):
+            representation["picture"] = settings.BASE_URL + picture
+
+        return representation
 
 
 class PackageUpdateSerializer(serializers.ModelSerializer):
