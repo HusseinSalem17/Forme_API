@@ -82,8 +82,6 @@ class Util:
             return False
         return True
 
-
-
     # def send_otp(email):
     #     """
     #     Send OTP to the user's email
@@ -189,11 +187,59 @@ class Util:
             response = sg.send(msg)
         except Exception as e:
             print(e)
-            return Response({"error": "Unable to send otp"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Unable to send otp"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {
                 "message": "We have sent otp to your email!",
             },
-            status=200,
+            status=status.HTTP_200_OK,
         )
+
+    # def send_contact_email(sender_email, message_body):
+    #     """
+    #     Send a contact us message from a verified sender email, with the user's email as reply-to.
+    #     """
+    #     subject = "Contact Us Message"
+    #     receiver_email = "husseinsalem910@gmail.com"
+    #     verified_sender_email = "husseinsalem177@gmail.com"  # This should be a verified sender email in your SendGrid account
+
+    #     # Create context for email template
+    #     context = {
+    #         "sender_email": sender_email,
+    #         "message_body": message_body,
+    #         "date": datetime.datetime.now().strftime("%d %B, %Y"),
+    #     }
+
+    #     # Assuming get_template is a function you've defined elsewhere to get your email templates
+    #     message = get_template("emails/contact-us-template.html").render(context)
+
+    #     # Create SendGrid Mail object with a verified sender and user's email as reply-to
+    #     msg = Mail(
+    #         from_email=verified_sender_email,
+    #         to_emails=receiver_email,
+    #         subject=subject,
+    #         html_content=message
+    #     )
+    #     msg.reply_to = sender_email  # Set the user's email as reply-to
+
+    #     try:
+    #         # Send the email
+    #         sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
+    #         response = sg.send(msg)
+    #         print('Email sent successfully')
+    #     except Exception as e:
+    #         print("Error: ", e.__str__())
+    #         return (
+    #             {"error": "Unable to send message"},
+    #             500,  # Assuming you're using a framework that expects a status code here
+    #         )
+
+    #     return (
+    #         {"message": "Your message has been sent successfully!"},
+    #         201,  # Assuming you're using a framework that expects a status code here
+    #     )
+        

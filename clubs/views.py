@@ -1,10 +1,11 @@
 from authentication.models import CustomUser
 
 from authentication.serializers import CustomUserSerializer, CustomUserUpdateSerializer
+from authentication.threads import Util
 from forme.utils import handle_validation_error
 from trainings.serializers import (
     PaymentAddSerializer,
-    PaymentSerializer,
+    PaymentDetailSerializer,
     ReviewsDetailSerializer,
 )
 from trainings.models import Trainee, Trainer
@@ -19,6 +20,7 @@ from .serializers import (
     BranchLoginSerializer,
     BranchMemberJoinSerializer,
     BranchMemberSerializer,
+    ContactUsAddSerializer,
     MemberSubscriptionUpdateSerializer,
     BranchTrainerUpdateSerializer,
     BranchTrainerSerializer,
@@ -351,6 +353,84 @@ class BranchRegisterView(GenericAPIView):
             )
 
 
+class ContactUsAddView(GenericAPIView):
+    serializer_class = ContactUsAddSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_description="Add a new contact us request",
+        request_body=ContactUsAddSerializer,
+        tags=["clubs"],
+        responses={
+            200: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "message": openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        description="Contact us request added successfully",
+                    ),
+                },
+                example={"message": "Contact us request added successfully"},
+            ),
+            400: openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                properties={
+                    "error": openapi.Schema(
+                        type=openapi.TYPE_OBJECT, description="Error messages"
+                    ),
+                },
+                example={"error": "This field is required"},
+            ),
+        },
+        security=[{"Bearer": []}],
+        manual_parameters=[
+            openapi.Parameter(
+                "Authorization",
+                openapi.IN_HEADER,
+                description="Bearer <token>",
+                type=openapi.TYPE_STRING,
+                required=True,
+            ),
+        ],
+    )
+    def post(self, request):
+        try:
+            user = request.user
+            if not user.is_owner():
+                return Response(
+                    {"error": "You are not authorized to perform this action"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            contact_us_instance = serializer.save()
+
+            # # Extract sender email and message from the request or use default values
+            # sender_email = request.user.email  # Assuming the user model has an email field
+            # message_body = contact_us_instance.message
+
+            # # Send the contact us email
+            # send_contact_email_response = Util.send_contact_email(sender_email, message_body)
+            # if send_contact_email_response[1] != status.HTTP_201_CREATED:
+            #     return Response(
+            #         send_contact_email_response[0],
+            #         status=send_contact_email_response[1],
+            #     )
+            print("contact us instance", contact_us_instance)
+            return Response(
+                {"message": "Contact us request added successfully"},
+                status=status.HTTP_201_CREATED,
+            )
+        except serializers.ValidationError as e:
+            return handle_validation_error(e)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
 # for branch update (club)
 class BranchUpdateView(GenericAPIView):
     serializer_class = BranchUpdateSerializer
@@ -398,11 +478,15 @@ class BranchUpdateView(GenericAPIView):
                     {"error": "Branch does not exist"},
                     status=status.HTTP_404_NOT_FOUND,
                 )
-            print('data of request', request.data)
-            serializer = self.get_serializer(branch, data=request.data, partial=True,)
+            print("data of request", request.data)
+            serializer = self.get_serializer(
+                branch,
+                data=request.data,
+                partial=True,
+            )
             serializer.is_valid(raise_exception=True)
             user = serializer.save()
-            print('data of branch', branch)
+            print("data of branch", branch)
             return Response(
                 BranchDetailSerializer(user).data, status=status.HTTP_200_OK
             )
@@ -650,8 +734,6 @@ class BranchGalleryAddView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
     serializer_class = BranchGalleryAddSerializer
-    
-    
 
     @swagger_auto_schema(
         tags=["clubs"],
@@ -1006,7 +1088,6 @@ class NewTrainerAddView(GenericAPIView):
     serializer_class = NewTrainerAddSerializer
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
-    
 
     @swagger_auto_schema(
         tags=["clubs"],
@@ -1673,6 +1754,7 @@ class BranchSubscriptionDeleteView(GenericAPIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 
 # for time delete (club)
 class TimeDeleteView(GenericAPIView):
@@ -2437,12 +2519,14 @@ class PaymentAndBranchMemberAddView(GenericAPIView):
             payment = payment_serializer.save(trainee=trainee)
         else:
             return Response(
-                payment_serializer.errors, status=status.HTTP_400_BAD_REQUEST
+                payment_serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Add a branch member
         branch_member_serializer = BranchMemberJoinSerializer(
-            data=request.data.get("branch_member"), context={"request": request}
+            data=request.data.get("branch_member"),
+            context={"request": request},
         )
         if branch_member_serializer.is_valid():
             branch_member = branch_member_serializer.save()
@@ -2453,7 +2537,7 @@ class PaymentAndBranchMemberAddView(GenericAPIView):
 
         return Response(
             {
-                "payment": PaymentSerializer(payment).data,
+                "payment": PaymentDetailSerializer(payment).data,
                 "branch_member": BranchMemberSerializer(branch_member).data,
             },
             status=status.HTTP_201_CREATED,

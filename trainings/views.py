@@ -33,7 +33,7 @@ from .serializers import (
     JoinProgramPlanSerializer,
     JoinWorkoutSerializer,
     PaymentAddSerializer,
-    PaymentSerializer,
+    PaymentDetailSerializer,
     PaymentUpdateSerializer,
     ProgramAddSerializer,
     ProgramListSerializer,
@@ -2434,7 +2434,7 @@ class PaymentAndWorkoutView(GenericAPIView):
 
         return Response(
             {
-                "payment": PaymentSerializer(payment).data,
+                "payment": PaymentDetailSerializer(payment).data,
                 "workout": TraineeWorkoutDetailSerializer(workout).data,
             },
             status=status.HTTP_201_CREATED,
@@ -3137,7 +3137,7 @@ class PaymentAddView(GenericAPIView):
         tags=["Payment Operations"],
         operation_id="PaymentAddView",
         responses={
-            201: PaymentSerializer,
+            201: PaymentDetailSerializer,
             400: openapi.Response(
                 "Bad Request",
                 schema=openapi.Schema(
@@ -3181,7 +3181,7 @@ class PaymentAddView(GenericAPIView):
             if serializer.is_valid():
                 payment = serializer.save(trainee=trainee)
                 return Response(
-                    PaymentSerializer(payment).data, status=status.HTTP_201_CREATED
+                    PaymentDetailSerializer(payment).data, status=status.HTTP_201_CREATED
                 )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Trainee.DoesNotExist:
@@ -3265,7 +3265,7 @@ class PaymentAndProgramView(GenericAPIView):
 
         return Response(
             {
-                "payment": PaymentSerializer(payment).data,
+                "payment": PaymentDetailSerializer(payment).data,
                 "program": TraineeProgramDetailSerializer(program).data,
             },
             status=status.HTTP_201_CREATED,
@@ -3292,7 +3292,7 @@ class PaymentUpdateView(GenericAPIView):
         tags=["Payment Operations"],
         operation_id="PaymentUpdateView",
         responses={
-            200: PaymentSerializer,
+            200: PaymentDetailSerializer,
             400: openapi.Response(
                 "Bad Request",
                 schema=openapi.Schema(
@@ -3337,7 +3337,7 @@ class PaymentUpdateView(GenericAPIView):
             if serializer.is_valid():
                 payment = serializer.save()
                 return Response(
-                    PaymentSerializer(payment).data, status=status.HTTP_200_OK
+                    PaymentDetailSerializer(payment).data, status=status.HTTP_200_OK
                 )
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Trainee.DoesNotExist:

@@ -381,7 +381,9 @@ class TraineeProgramDetailSerializer(serializers.ModelSerializer):
         return ProgramPlanSerializer(program_plans, many=True).data
 
     def to_representation(self, instance):
-        representation = super(Program, self).to_representation(instance)
+        representation = super(TraineeProgramDetailSerializer, self).to_representation(
+            instance
+        )
         picture = representation.get("picture", None)
         if picture and not picture.startswith("http"):
             representation["picture"] = settings.BASE_URL + picture
@@ -667,6 +669,7 @@ class WorkoutAddSerializer(serializers.ModelSerializer):
             "min_age",
             "max_age",
             "is_offer",
+            "max_trainees",
             "offer_price",
             "sport_field",
             "workout_files",
@@ -675,6 +678,13 @@ class WorkoutAddSerializer(serializers.ModelSerializer):
             "title": {"required": True},
             "description": {"required": True},
             "price": {"required": True},
+            "min_age": {"required": False},
+            "max_age": {"required": False},
+            "is_offer": {"required": False},
+            "offer_price": {"required": False},
+            "max_trainees": {"required": False},
+            "picture": {"required": False},
+            "level": {"required": True},
             "sport_field": {"required": True},
             "workout_files": {"required": False},
         }
@@ -808,14 +818,17 @@ class TraineeWorkoutDetailSerializer(serializers.ModelSerializer):
             return WorkoutFileSerializer(workout_videos_files, many=True).data
         else:
             return WorkoutFileSerializer(workout_videos_files.first()).data
-    
+
     def to_representation(self, instance):
-        representation = super(Workout, self).to_representation(instance)
+        representation = super(TraineeWorkoutDetailSerializer, self).to_representation(
+            instance
+        )
         picture = representation.get("picture", None)
         if picture and not picture.startswith("http"):
             representation["picture"] = settings.BASE_URL + picture
 
         return representation
+
 
 class TrainerWorkoutDetailSerializer(serializers.ModelSerializer):
     trainees = TraineeSerializer(many=True)
@@ -842,6 +855,7 @@ class TrainerWorkoutDetailSerializer(serializers.ModelSerializer):
             "workout_videos_files",
             "number_of_videos",
             "current_trainees_count",
+            "max_trainees",
             "trainees",
             "duration_in_minutes",
             "avg_ratings",
@@ -1076,7 +1090,12 @@ class SessionSerializer(serializers.ModelSerializer):
 
 class PaymentAddSerializer(serializers.ModelSerializer):
     content_type = serializers.ChoiceField(
-        choices=["program", "workout", "session", "club"],
+        choices=[
+            "program",
+            "workout",
+            "session",
+            "club",
+        ],
         required=True,
         error_messages={
             "invalid_choice": "Invalid content type. Must be program, workout, session or club."
@@ -1095,6 +1114,14 @@ class PaymentAddSerializer(serializers.ModelSerializer):
             "content_type",
             "object_id",
         ]
+        extra_kwargs = {
+            "amount": {"required": True},
+            "method": {"required": True},
+            "status": {"required": False},
+            "transaction_id": {"required": False},
+            "content_type": {"required": True},
+            "object_id": {"required": True},
+        }
 
     def validate(self, data):
         user = self.context["request"].user
@@ -1179,7 +1206,7 @@ class PaymentUpdateSerializer(serializers.ModelSerializer):
         return instance
 
 
-class PaymentSerializer(serializers.ModelSerializer):
+class PaymentDetailSerializer(serializers.ModelSerializer):
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
 
@@ -1192,8 +1219,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             "method",
             "status",
             "transaction_id",
-            "content_type",
-            "object_id",
             "created_at",
             "updated_at",
         ]

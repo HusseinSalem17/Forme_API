@@ -15,7 +15,7 @@ from clubs.models import (
     Subscription,
     SubscriptionPlan,
 )
-from trainings.models import Review, Trainee, Trainer
+from trainings.models import Payment, Review, Trainee, Trainer
 from django.contrib.contenttypes.models import ContentType
 
 
@@ -76,6 +76,12 @@ User = get_user_model()
 #             start_date="2024-06-23",
 #             end_date="2024-06-28",
 #         )
+#         self.attendances = self.member_subscription.member_attendance.all()
+
+#         for attendance in self.attendances:
+#             print('print list of attendances')
+#             print(attendance)
+
 #         self.attendance = self.member_subscription.member_attendance.first()
 #         self.url = reverse(
 #             "attendance_update", kwargs={"attendance_id": self.attendance.id}
@@ -91,6 +97,7 @@ User = get_user_model()
 #         print("attendance response.data", response.data)
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
 #         self.assertTrue(Attendance.objects.get(id=self.attendance.id).is_present)
+
 
 #     def test_attendance_update_unauthorized(self):
 #         self.client.force_authenticate(user=self.user_non_owner)
@@ -182,36 +189,97 @@ User = get_user_model()
 #         self.assertIn("error", response.data)
 
 
-class BranchDetailViewTests(APITestCase):
-    def setUp(self):
-        self.url = reverse("branch_detail")
-        self.user_non_owner = User.objects.create_user(
-            username="nonowneruser",
-            email="nonowner@example.com",
-            password="password123",
-        )
-        self.user_owner = User.objects.create_owner(
-            username="testuser",
-            email="test@example.com",
-            password="password123",
-        )
-        self.club = Club.objects.create(
-            property_name="Test Club", sport_field="Football"
-        )
-        self.branch = Branch.objects.create(
-            owner=self.user_owner,
-            club=self.club,
-            address="123 Test St",
-            details="Test details",
-        )
+# class BranchDetailViewTests(APITestCase):
+#     def setUp(self):
+#         self.url = reverse("branch_detail")
+#         self.user_non_owner = User.objects.create_user(
+#             username="nonowneruser",
+#             email="nonowner@example.com",
+#             password="password123",
+#         )
+#         self.user_owner = User.objects.create_owner(
+#             username="testuser",
+#             email="test@example.com",
+#             password="password123",
+#         )
+#         self.club = Club.objects.create(
+#             property_name="Test Club", sport_field="Football"
+#         )
+#         self.branch = Branch.objects.create(
+#             owner=self.user_owner,
+#             club=self.club,
+#             address="123 Test St",
+#             details="Test details",
+#         )
+#         self.new_trainer = NewTrainer.objects.create(
+#             email="newtrainer@example.com",
+#             username="newtrainer",
+#             branch=self.branch,
+#         )
+#         self.user_trainee = User.objects.create_trainee(
+#             email="trainee@example.com",
+#             password="password123",
+#         )
+#         self.trainee = Trainee.objects.create(
+#             user=self.user_trainee,
+#         )
+#         self.member = BranchMember.objects.create(
+#             trainee=self.trainee,
+#             branch=self.branch,
+#         )
+#         self.subscription = Subscription.objects.create(
+#             title="Fitness",
+#             price=100.00,
+#             target_gender="male",
+#             min_age=18,
+#             max_age=40,
+#             branch=self.branch,
+#         )
+#         self.subscription_plan = SubscriptionPlan.objects.get(
+#             subscription=self.subscription,
+#             duration=2,
+#         )
+#         self.member_subscription = MemberSubscription.objects.create(
+#             subscription=self.subscription,
+#             subscription_plan=self.subscription_plan,
+#             member=self.member,
+#             state="active",
+#             start_date="2024-06-23",
+#             end_date="2024-06-28",
+#         )
+#         self.attendances = self.member_subscription.member_attendance.all()
 
-    def test_branch_detail_success(self):
-        self.client.force_authenticate(user=self.user_owner)
-        response = self.client.get(self.url)
-        # print('here detail response.data', response.data)
-        # self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # self.assertEqual(response.data["address"], self.branch.address)
-        # self.assertEqual(response.data["details"], self.branch.details)
+#         for attendance in self.attendances:
+#             print('print list of attendances Detail')
+#             print(attendance)
+#         # Create a review
+#         content_type = ContentType.objects.get_for_model(Branch)
+#         self.review = Review.objects.create(
+#             ratings=5,
+#             comment="Great experience!",
+#             trainee=self.trainee,
+#             content_type=content_type,
+#             object_id=self.branch.id,
+#         )
+#         # Create a Payments
+#         self.payment=Payment.objects.create(
+#             amount=300,
+#             trainee=self.trainee,
+#             currency="EGP",
+#             method="visa",
+#             status="completed",
+#             content_type=content_type,
+#             object_id=self.branch.id,
+#         )
+
+
+#     def test_branch_detail_success(self):
+#         self.client.force_authenticate(user=self.user_owner)
+#         response = self.client.get(self.url)
+#         print('here detail response.data', response.data)
+#         self.assertEqual(response.status_code, status.HTTP_200_OK)
+#         self.assertEqual(response.data["address"], self.branch.address)
+#         self.assertEqual(response.data["details"], self.branch.details)
 
 #     def test_branch_detail_unauthorized(self):
 #         self.client.force_authenticate(user=self.user_non_owner)
@@ -226,6 +294,55 @@ class BranchDetailViewTests(APITestCase):
 #     def test_branch_detail_without_authentication(self):
 #         response = self.client.get(self.url)
 #         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class ConctactUsViewTests(APITestCase):
+    def setUp(self):
+        self.user_non_owner = User.objects.create_user(
+            username="nonowneruser",
+            email="nonowner@example.com",
+            password="password123",
+        )
+        self.user_owner = User.objects.create_owner(
+            username="testuser",
+            email="husseinsalem177@gmail.com",
+            password="password123",
+        )
+        self.club = Club.objects.create(
+            property_name="Test Club", sport_field="Football"
+        )
+        self.branch = Branch.objects.create(
+            owner=self.user_owner,
+            club=self.club,
+            address="123 Test St",
+            details="Test details",
+        )
+        self.url = reverse("contact_us_add")
+
+    def test_contact_us_success(self):
+        self.client.force_authenticate(user=self.user_owner)
+        data = {"subject": "Hi", "message": "This is a test message."}
+        response = self.client.post(self.url, data, format="json")
+        print("response contact", response.data)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            response.data["message"], "Contact us request added successfully"
+        )
+
+    def test_contact_us_unauthorized(self):
+        self.client.force_authenticate(user=self.user_non_owner)
+        data = {"subject": "Hi", "message": "This is a test message."}
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("error", response.data)
+        self.assertEqual(
+            response.data["error"], "You are not authorized to perform this action"
+        )
+
+    def test_contact_us_without_authentication(self):
+        data = {"subject": "Hi", "message": "This is a test message."}
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 # class BranchRegisterViewTests(APITestCase):
@@ -391,25 +508,25 @@ class BranchDetailViewTests(APITestCase):
 #         print("response.data", response.data)
 #         branch = Branch.objects.get(id=self.branch.id)
 #         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # self.assertEqual(branch.address, self.update_data["address"])
-        # self.assertEqual(branch.details, self.update_data["details"])
+# self.assertEqual(branch.address, self.update_data["address"])
+# self.assertEqual(branch.details, self.update_data["details"])
 
-    # def test_branch_update_unauthorized(self):
-    #     self.client.logout()
-    #     response = self.client.patch(self.url, self.update_data, format="json")
-    #     self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+# def test_branch_update_unauthorized(self):
+#     self.client.logout()
+#     response = self.client.patch(self.url, self.update_data, format="json")
+#     self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    # def test_branch_update_with_invalid_data(self):
-    #     invalid_data = self.update_data.copy()
-    #     invalid_data["address"] = ""  # Invalid address
-    #     response = self.client.patch(self.url, invalid_data, format="json")
-    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+# def test_branch_update_with_invalid_data(self):
+#     invalid_data = self.update_data.copy()
+#     invalid_data["address"] = ""  # Invalid address
+#     response = self.client.patch(self.url, invalid_data, format="json")
+#     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    # def test_branch_update_nonexistent_branch(self):
-    #     self.branch.delete()  # Delete the branch to simulate non-existence
-    #     response = self.client.patch(self.url, self.update_data, format="json")
-    #     print("response.data here", response.data)
-    #     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+# def test_branch_update_nonexistent_branch(self):
+#     self.branch.delete()  # Delete the branch to simulate non-existence
+#     response = self.client.patch(self.url, self.update_data, format="json")
+#     print("response.data here", response.data)
+#     self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 # class ExistingTrainerAddViewTests(APITestCase):

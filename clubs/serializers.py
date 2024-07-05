@@ -7,8 +7,9 @@ from authentication.serializers import (
     CustomUserSerializer,
     LocationSerializer,
 )
-from trainings.models import Program, Trainee, Trainer, Workout
+from trainings.models import Payment, Program, Trainee, Trainer, Workout
 from trainings.serializers import (
+    PaymentDetailSerializer,
     TraineeSerializer,
     TrainerListSerializer,
     ReviewsDetailSerializer,
@@ -1013,7 +1014,9 @@ class NewTrainerAddSerializer(serializers.ModelSerializer):
         return data
 
     def to_representation(self, instance):
-        representation = super(NewTrainer, self).to_representation(instance)
+        representation = super(NewTrainerAddSerializer, self).to_representation(
+            instance
+        )
         profile_picture = representation.get("profile_picture", None)
         if profile_picture and not profile_picture.startswith("http"):
             representation["profile_picture"] = settings.BASE_URL + profile_picture
@@ -1124,7 +1127,7 @@ class NewTrainerSerializer(serializers.ModelSerializer):
         return SubscriptionSummarySerializer(subscription, many=True).data
 
     def to_representation(self, instance):
-        representation = super(NewTrainer, self).to_representation(instance)
+        representation = super(NewTrainerSerializer, self).to_representation(instance)
         profile_picture = representation.get("profile_picture", None)
         if profile_picture and not profile_picture.startswith("http"):
             representation["profile_picture"] = settings.BASE_URL + profile_picture
@@ -1394,7 +1397,7 @@ class SubscriptionPlanMemberSerializer(serializers.ModelSerializer):
 
 
 class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
-    attendance = AttendanceSerializerTemp(many=True, read_only=True)
+    attendance = serializers.SerializerMethodField()
     subscription_plan = SubscriptionPlanMemberSerializer()
     subscription = serializers.SerializerMethodField()
 
@@ -1411,6 +1414,10 @@ class MemberSubscriptionSerializerTemp(serializers.ModelSerializer):
             "start_date",
             "end_date",
         ]
+
+    def get_attendance(self, obj):
+        attendance = Attendance.objects.filter(member_subscription=obj)
+        return AttendanceSerializerTemp(attendance, many=True).data
 
     def get_subscription(self, obj):
         subscription = Subscription.objects.get(id=obj.subscription.id)
@@ -1541,6 +1548,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     facilities = serializers.SerializerMethodField()
     reviews = ReviewsDetailSerializer(many=True)
     galleries = serializers.SerializerMethodField()
+    payments = serializers.SerializerMethodField()  # Add this line
     created_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
@@ -1567,6 +1575,7 @@ class BranchDetailSerializer(serializers.ModelSerializer):
             "facilities",
             "reviews",
             "galleries",
+            "payments",  # Add this line
             "created_at",
             "updated_at",
         ]
@@ -1603,6 +1612,11 @@ class BranchDetailSerializer(serializers.ModelSerializer):
     def get_galleries(self, obj):
         galleries = BranchGallery.objects.filter(branch=obj)
         return BranchGallerySerializer(galleries, many=True).data
+
+    def get_payments(self, obj):
+        content_type = ContentType.objects.get_for_model(Branch)
+        payments = Payment.objects.filter(content_type=content_type, object_id=obj.id)
+        return PaymentDetailSerializer(payments, many=True).data
 
 
 class TraineeBranchDetailSerializer(serializers.ModelSerializer):
@@ -1718,7 +1732,6 @@ class BranchListSerializer(serializers.ModelSerializer):
 
 
 class ContactUsSerializer(serializers.ModelSerializer):
-    branch = BranchListSerializer()
     email = serializers.SerializerMethodField()
 
     class Meta:
@@ -1726,7 +1739,7 @@ class ContactUsSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "email",
-            "branch",
+            "subject",
             "message",
             "created_at",
         ]
@@ -1734,6 +1747,33 @@ class ContactUsSerializer(serializers.ModelSerializer):
     def get_email(self, obj):
         branch = obj.branch
         return branch.owner.email
+
+
+class ContactUsAddSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactUs
+        fields = [
+            "subject",
+            "message",
+        ]
+        extra_kwargs = {
+            "subject": {
+                "required": False,
+            },
+            "message": {
+                "required": True,
+            },
+        }
+
+    def create(self, validated_data):
+        request = self.context["request"]
+        user = request.user
+        branch = Branch.objects.get(owner=user)
+        subject = validated_data.get("subject")
+        message = validated_data.get("message")
+        if not branch:
+            raise serializers.ValidationError({"branch": "Branch not found"})
+        return ContactUs.objects.create(branch=branch, subject=subject, message=message)
 
 
 class ClubsListSerializer(serializers.ModelSerializer):

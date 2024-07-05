@@ -325,6 +325,12 @@ class Attendance(models.Model):
 
 
 class ContactUs(models.Model):
+    subject = models.CharField(
+        max_length=255,
+        default="Contact Us",
+        blank=True,
+        null=True,
+    )
     message = models.TextField()
     branch = models.ForeignKey(
         Branch,
@@ -370,7 +376,7 @@ class Time(models.Model):
         on_delete=models.CASCADE,
         related_name="day_time",
     )
-    
+
     # class Meta:
     #     unique_together = ("from_time", "to_time", "day")
 
