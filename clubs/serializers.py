@@ -820,7 +820,7 @@ class SubscriptionUpdateSerializer(serializers.ModelSerializer):
                         setattr(s, key, value)
                         print("nooowww sssss")
                         setattr(s, "is_added", True)
-                s.save()
+                    s.save()
             instance.save()
             return instance
 
