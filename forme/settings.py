@@ -28,7 +28,7 @@ if DEBUG:
     INTERNAL_IPS = ["127.0.0.1"]  # <-- Updated!
 
 
-ALLOWED_HOSTS = ["127.0.0.1", "192.168.1.3", "forme-app-7pffc.ondigitalocean.app"]
+ALLOWED_HOSTS = ["127.0.0.1", "10.0.2.2", "forme-app-7pffc.ondigitalocean.app"]
 
 
 # Application definition
@@ -55,7 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",  # <-- Updated!
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -159,8 +159,8 @@ REST_FRAMEWORK = {
 # }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(days=365),  # Set to 1 year
-    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=365),  # Set to 1 year
+    "ACCESS_TOKEN_LIFETIME": datetime.timedelta(minutes=15),  # Set to 15 minutes
+    "REFRESH_TOKEN_LIFETIME": datetime.timedelta(days=2),  # Set to 7 days
 }
 
 DEBUG_TOOLBAR_CONFIG = {"IS_RUNNING_TESTS": False}
@@ -283,16 +283,16 @@ CORS_ALLOW_HEADERS = [
 
 
 # CELERY SETTINGS
-CELERY_BACKEND = 'redis://localhost:6379/3'
-CELERY_BROKER_URL = 'redis://localhost:6379/4'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/5'
+CELERY_BACKEND = "redis://localhost:6379/3"
+CELERY_BROKER_URL = "redis://localhost:6379/4"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/5"
 
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_ENABLE_UTC = True
 
-BASE_URL="https://forme-app-7pffc.ondigitalocean.app"
+BASE_URL = "https://forme-app-7pffc.ondigitalocean.app"
 # CELERY_BEAT_SCHEDULE = {
 #     "create-daily-attendance": {
 #         "task": "clubs.tasks.create_daily_attendance",

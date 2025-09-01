@@ -31,7 +31,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.generics import GenericAPIView
-from django_redis import get_redis_connection
+# from django_redis import get_redis_connection
 
 # cache = RedisCache(get_redis_connection("default"), ttl=600)
 
@@ -414,12 +414,12 @@ class LogoutAPIView(GenericAPIView):
             )
             serializer.is_valid(raise_exception=True)
             serializer.save()
-            print('logout serializer', serializer)
+            print("logout serializer", serializer)
             return Response(
                 {"message": "Logout successfuly"},
                 status=status.HTTP_200_OK,
             )
-            
+
         except serializers.ValidationError as e:
             return handle_validation_error(e)
         except Exception as e:

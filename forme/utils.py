@@ -8,6 +8,7 @@ import os
 from rest_framework import status
 from rest_framework.response import Response
 from urllib.parse import quote
+from rest_framework.exceptions import ErrorDetail
 
 
 # class RedisCache(MutableMapping):
@@ -105,8 +106,6 @@ def get_file_path(folder, type, filename):
     return os.path.join(folder_path, filename)
 
 
-from rest_framework.exceptions import ErrorDetail
-
 def flatten_errors(errors):
     flattened_errors = []
 
@@ -148,6 +147,7 @@ def handle_validation_error(e):
     flattened_errors = flatten_errors(errors)
     print("here flattened_errors", flattened_errors)
     return Response({"error": flattened_errors}, status=status.HTTP_400_BAD_REQUEST)
+
 
 def sanitize_path_component(path_component):
     safe_component = quote(path_component, safe="")

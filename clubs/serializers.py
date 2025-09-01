@@ -238,7 +238,7 @@ class BranchAddSerializer(serializers.ModelSerializer):
         club_serializer = ClubAddSerializer(
             data=club_data, context={"request": self.context["request"]}
         )
-
+        # this
         if not owner_serializer.is_valid():
             raise serializers.ValidationError(owner_serializer.errors)
         if not club_serializer.is_valid():
