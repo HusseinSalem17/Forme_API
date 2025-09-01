@@ -1,1 +1,1 @@
-gunicorn forme.wsgi --bind 0.0.0.0:$PORT
+web: gunicorn forme.wsgi --bind 0.0.0.0:$PORT
