@@ -79,7 +79,6 @@ social-auth-app-django
 social-auth-core
 sqlparse
 starkbank-ecdsa
-systemd-python
 texttable
 tk
 typing_extensions
